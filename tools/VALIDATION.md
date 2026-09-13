@@ -3,7 +3,15 @@
 Bounty: https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/issues/60
 PR: https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/66
 
-## Hosted execution passed
+## Follow-up coverage check
+
+A final comparison identified the GitHub-generated release source ZIP/TAR files
+separately from uploaded release assets. Those eight generated archives were not
+in the run below. The exporter now includes both generated source archives for
+each release; its new hosted run is pending. Existing attachment preservation and
+credential stripping on redirects remain covered by the tests.
+
+## Earlier hosted execution passed
 
 The manually triggered GitHub Actions run completed successfully:
 https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34750105125

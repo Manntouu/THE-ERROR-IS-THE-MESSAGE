@@ -34,7 +34,7 @@ def safe_url(url):
     if p.scheme != "https" or p.username or p.password or p.port not in (None, 443):
         raise ArchiveError("Only ordinary HTTPS GitHub URLs are permitted")
     host = (p.hostname or "").lower()
-    if host not in {"api.github.com", "github.com", "user-images.githubusercontent.com",
+    if host not in {"api.github.com", "github.com", "codeload.github.com", "user-images.githubusercontent.com",
                     "objects.githubusercontent.com", "release-assets.githubusercontent.com",
                     "github-production-user-asset-6210df.s3.amazonaws.com",
                     "github-production-repository-file-5c1aeb.s3.amazonaws.com"} and not host.endswith(".githubusercontent.com"):
@@ -360,6 +360,10 @@ def export(repo, output, client, issue_number=None, max_bytes=2048 * MIB):
             if kind == "releases":
                 for asset in record["assets"]:
                     assets.add(asset["url"], source, asset.get("size"), asset.get("digest"))
+                # GitHub-generated source archives are separate from uploaded assets.
+                for field in ("zipball_url", "tarball_url"):
+                    if record.get(field):
+                        assets.add(record[field], source + "/" + field)
     records = assets.final()
     failures = [url for url, entry in records.items() if entry["status"] != "saved"]
     report = {"repository": repo, "started_at": started,

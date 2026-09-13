@@ -28,7 +28,8 @@ It remains failed: missing files are never counted as a complete backup.
 - Every page of open/closed issues and their complete conversation comments.
 - Every page of open/closed PRs, conversation comments, review summaries/states,
   inline review comments, and diff context.
-- Release descriptions, tags, and every page of release assets.
+- Release descriptions, tags, every page of uploaded release assets, and the
+  GitHub-generated source ZIP and TAR archives for each release.
 - The root README and its GitHub-uploaded attachments.
 - GitHub-uploaded images, PDFs, audio, video, and files linked in descriptions,
   comments, and review bodies, including HTML image tags and bare URLs.

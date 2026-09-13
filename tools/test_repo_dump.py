@@ -222,5 +222,42 @@ class ArchiveTests(unittest.TestCase):
             self.assertTrue((Path(folder) / "readme.html").exists())
 
 
+    def test_generated_release_archives_are_saved_and_failures_are_reported(self):
+        tar_url = "https://api.github.com/repos/owner/repo/tarball/v1"
+        zip_url = "https://api.github.com/repos/owner/repo/zipball/v1"
+        for unavailable in (False, True):
+            client = FixtureClient({
+                "https://github.com/user-attachments/assets/00000000-0000-0000-0000-000000000001": b"image",
+                "https://api.github.com/repos/owner/repo/releases/assets/4": b"zip",
+                tar_url: b"source-tar",
+                zip_url: dump.ArchiveError("HTTP 404") if unavailable else b"source-zip"})
+            original = client.pages
+            def pages(path):
+                rows = original(path)
+                if path.endswith("/releases"):
+                    rows[0].update(tarball_url=tar_url, zipball_url=zip_url)
+                return rows
+            client.pages = pages
+            with self.subTest(unavailable=unavailable), tempfile.TemporaryDirectory() as folder:
+                report = dump.export("owner/repo", folder, client)
+                self.assertEqual(report["complete"], not unavailable)
+                self.assertEqual(report["counts"]["assets"], 4)
+                manifest = json.loads((Path(folder) / "manifest.json").read_text())
+                self.assertEqual(manifest["assets"][tar_url]["sha256"],
+                                 hashlib.sha256(b"source-tar").hexdigest())
+                self.assertEqual(manifest["assets"][zip_url]["status"],
+                                 "failed" if unavailable else "saved")
+
+    def test_source_archive_redirect_drops_auth_and_rejects_lookalike_host(self):
+        request = Request("https://api.github.com/repos/owner/repo/tarball/v1",
+                          headers={"Authorization": "Bearer TEST-ONLY"})
+        redirect = dump.SafeRedirect().redirect_request(
+            request, None, 302, "Found", {}, "https://codeload.github.com/owner/repo/legacy.tar.gz/v1")
+        self.assertIsNone(redirect.get_header("Authorization"))
+        with self.assertRaises(dump.ArchiveError):
+            dump.safe_url("https://codeload.github.com.example.com/file")
+
+
+
 if __name__ == "__main__":
     unittest.main()
