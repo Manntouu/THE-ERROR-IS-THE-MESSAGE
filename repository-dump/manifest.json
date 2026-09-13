@@ -2,57 +2,137 @@
   "repository": "attogram/THE-ERROR-IS-THE-MESSAGE",
   "assets": {
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/tarball/0000": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 14684,
+      "sha256": "026a790a7ce4e4f1a7e760379cbbe7d9b8f0f6001a105f2cfdfead91eb223972",
+      "content_type": "application/x-gzip",
+      "parts": [
+        {
+          "path": "assets/026a790a7ce4e4f1a7e760379cbbe7d9b8f0f6001a105f2cfdfead91eb223972/download.bin",
+          "size": 14684,
+          "sha256": "026a790a7ce4e4f1a7e760379cbbe7d9b8f0f6001a105f2cfdfead91eb223972"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/379206037/tarball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/tarball/0001": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 14952,
+      "sha256": "b2b87910329b323ab92e2417bc583b98238ea5c0840cc3212e7433bb55f7a7e9",
+      "content_type": "application/x-gzip",
+      "parts": [
+        {
+          "path": "assets/b2b87910329b323ab92e2417bc583b98238ea5c0840cc3212e7433bb55f7a7e9/download.bin",
+          "size": 14952,
+          "sha256": "b2b87910329b323ab92e2417bc583b98238ea5c0840cc3212e7433bb55f7a7e9"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/379899566/tarball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/tarball/0002": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 15084,
+      "sha256": "2f062254b585cc25fe7a0d9dd3a5e6d5ffeb1b78af1be49efb26a7481f2f2cf0",
+      "content_type": "application/x-gzip",
+      "parts": [
+        {
+          "path": "assets/2f062254b585cc25fe7a0d9dd3a5e6d5ffeb1b78af1be49efb26a7481f2f2cf0/download.bin",
+          "size": 15084,
+          "sha256": "2f062254b585cc25fe7a0d9dd3a5e6d5ffeb1b78af1be49efb26a7481f2f2cf0"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/379903918/tarball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/tarball/0003": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 39372573,
+      "sha256": "ed5d184cb7231305582147d4c8ae784b766ab262e90a37cb0ba20a96c1a3a725",
+      "content_type": "application/x-gzip",
+      "parts": [
+        {
+          "path": "assets/ed5d184cb7231305582147d4c8ae784b766ab262e90a37cb0ba20a96c1a3a725/download.bin",
+          "size": 39372573,
+          "sha256": "ed5d184cb7231305582147d4c8ae784b766ab262e90a37cb0ba20a96c1a3a725"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/387057376/tarball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/zipball/0000": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 15138,
+      "sha256": "6c6a7ba809e3fe467f0e83071e30637f5d20e407907c3ae2f09c9d28a7692d4a",
+      "content_type": "application/zip",
+      "parts": [
+        {
+          "path": "assets/6c6a7ba809e3fe467f0e83071e30637f5d20e407907c3ae2f09c9d28a7692d4a/download.zip",
+          "size": 15138,
+          "sha256": "6c6a7ba809e3fe467f0e83071e30637f5d20e407907c3ae2f09c9d28a7692d4a"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/379206037/zipball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/zipball/0001": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 15393,
+      "sha256": "ed16135af105e14f705183769d7a98c4935657f129aec7bac18664e3b4916e49",
+      "content_type": "application/zip",
+      "parts": [
+        {
+          "path": "assets/ed16135af105e14f705183769d7a98c4935657f129aec7bac18664e3b4916e49/download.zip",
+          "size": 15393,
+          "sha256": "ed16135af105e14f705183769d7a98c4935657f129aec7bac18664e3b4916e49"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/379899566/zipball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/zipball/0002": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 15659,
+      "sha256": "e3dac87584453505b4b3b5e39c8c146280187461c6d44846a974db22312cccb6",
+      "content_type": "application/zip",
+      "parts": [
+        {
+          "path": "assets/e3dac87584453505b4b3b5e39c8c146280187461c6d44846a974db22312cccb6/download.zip",
+          "size": 15659,
+          "sha256": "e3dac87584453505b4b3b5e39c8c146280187461c6d44846a974db22312cccb6"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/379903918/zipball_url"
       ]
     },
     "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/zipball/0003": {
-      "status": "failed",
-      "error": "HTTP 415 from api.github.com",
+      "status": "saved",
+      "size": 39396262,
+      "sha256": "fee53f9ca1ad65e52d63ff9cda9e1b6aaa8e1a36ac6974f24eda71b89f09b7c7",
+      "content_type": "application/zip",
+      "parts": [
+        {
+          "path": "assets/fee53f9ca1ad65e52d63ff9cda9e1b6aaa8e1a36ac6974f24eda71b89f09b7c7/download.zip",
+          "size": 39396262,
+          "sha256": "fee53f9ca1ad65e52d63ff9cda9e1b6aaa8e1a36ac6974f24eda71b89f09b7c7"
+        }
+      ],
+      "reused": false,
       "references": [
         "releases/387057376/zipball_url"
       ]

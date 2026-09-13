@@ -14,4 +14,627 @@ Raw JSON preserves original text; readable pages link to local media. Files over
 Validation: 20 tests pass locally and on [Windows/Linux CI](https://github.com/mrfandu1/THE-ERROR-IS-THE-MESSAGE/actions/runs/34750284487). The initial full hosted run was independently checked after publication: all 583 checksum-listed files existed remotely, every asset-part length matched the manifest, and 12 sampled remote files matched SHA-256. The latest hosted rerun verified the cached files again and preserved new PRs/comments. The latest archive index and issue #60 page were inspected in a real browser, including clickable saved audio/video links and localized HTML images. The source snapshot is sequential, not atomic; deleted records/historical edits unavailable through GitHub&#x27;s APIs cannot be recovered. Full scope and phone instructions are in `REPOSITORY_DUMP.md`.
 
 Submitted for the advertised EUR 100 bounty. AI-assisted implementation for @mrfandu1. Please confirm whether this demonstration meets the acceptance criteria and your preferred payout method for the accepted award.
-</pre></body></html>
+</pre><h2>Review: COMMENTED</h2><pre>### 🟡 Changes recommended
+
+Critical archive-branch and upload-trust issues, along with moderate publication, CI, link, and concurrency issues, remain unresolved.
+
+*Get a fresh assessment by requesting another Copilot review.*
+
+&lt;details&gt;
+&lt;summary&gt;Pull request overview&lt;/summary&gt;
+
+Adds a dependency-free, phone-triggered GitHub repository exporter that preserves discussions, releases, tags, and media in an archive branch.
+
+**Changes:**
+- Exports and verifies repository records and uploaded files.
+- Publishes archives incrementally with large-file handling.
+- Adds tests, documentation, and cross-platform workflows.
+&lt;/details&gt;
+
+&lt;details&gt;
+&lt;summary&gt;File summaries&lt;/summary&gt;
+
+| File | Summary and review notes |
+|---|---|
+| `tools/repository_dump.py` | Export, download, verification, and restoration logic. **Critical (1 vote):** upload URL validation trusts attacker-controlled hosts. **Moderate (2 votes):** some bare media links are not clickable. **Moderate (1 vote):** concurrent media-map access can fail during checkpointing. |
+| `tools/publish_archive.py` | Batched archive publication. **Moderate (2 votes):** generated metadata is not chunked and may exceed the archive file limit. |
+| `tests/test_repository_dump.py` | Exporter and security test coverage. |
+| `tests/test_publish_archive.py` | Publication test coverage. |
+| `REPOSITORY_DUMP.md` | Usage and phone workflow documentation. |
+| `.gitignore` | Ignores generated export artifacts. |
+| `.github/workflows/test-repository-dump.yml` | Cross-platform test workflow. **Moderate (3 votes):** path filters omit publisher files, allowing publisher-only changes to bypass these tests. |
+| `.github/workflows/repository-dump.yml` | Phone-triggered export and publication workflow. **Critical (2 votes):** orphan-branch initialization can include the source tree in the archive and bypass the large-file guard. |
+&lt;/details&gt;
+
+&lt;details&gt;
+&lt;summary&gt;Review details&lt;/summary&gt;
+
+### Suppressed comments (1)
+
+**tools/repository_dump.py:367**
+* With multiple upload workers, a worker can assign to `self.media` while the main thread constructs `dict(self.media)` here. Iterating a dict during a concurrent size change can raise `RuntimeError: dictionary changed size during iteration`, which `run()` records as an API-collection failure and makes an otherwise successful export incomplete. Serialize this checkpoint or protect all shared map access with a lock.
+```
+                # Each completed record is immutable; snapshot the map before serialization.
+                write_json(self.output / &#x27;assets.json&#x27;, dict(self.media))
+```
+
+- **Files reviewed:** 7/8 changed files
+- **Comments generated:** 5
+- **Review effort level:** Lite
+&lt;/details&gt;
+
+---
+
+💡 &lt;a href=&quot;/attogram/THE-ERROR-IS-THE-MESSAGE/new/main?filename=.github/skills/code-review/SKILL.md&quot; class=&quot;Link--inTextBlock&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Add a `code-review` agent skill&lt;/a&gt; or configure MCP servers for context-aware, tailored reviews. &lt;a href=&quot;https://docs.github.com/copilot/how-tos/use-copilot-agents/request-a-code-review/use-code-review?tool=webui#mcp-servers-and-agent-skills&quot; class=&quot;Link--inTextBlock&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Learn more in the docs.&lt;/a&gt;</pre><h2>Inline review: .github/workflows/repository-dump.yml</h2><pre>When no archive branch exists, `git switch --orphan` leaves the checked-out source tree in the index/worktree. The publisher&#x27;s first staged commit can therefore include every source file, so the supposedly dedicated archive branch duplicates the repository and can bypass the 40 MiB archive-file guard. Clear the orphan index/worktree before exporting.</pre><h2>Diff context</h2><pre>@@ -0,0 +1,91 @@
++name: Save repository history and media
++
++on:
++  workflow_dispatch:
++    inputs:
++      source_repository:
++        description: &#x27;Repository to save (owner/name). Leave blank for this repository.&#x27;
++        required: false
++        type: string
++
++permissions:
++  contents: write
++  issues: read
++  pull-requests: read
++
++concurrency:
++  group: repository-archive
++  cancel-in-progress: false
++
++jobs:
++  archive:
++    runs-on: ubuntu-latest
++    timeout-minutes: 90
++    env:
++      ARCHIVE_BRANCH: repository-archive
++      SOURCE_REPOSITORY: ${{ inputs.source_repository || vars.REPOSITORY_DUMP_SOURCE || github.repository }}
++    steps:
++      - name: Get the export tool
++        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
++        with:
++          fetch-depth: 1
++
++      - name: Test the export tool
++        run: python3 -m unittest discover -s tests -v
++
++      - name: Prepare archive branch
++        shell: bash
++        run: |
++          archive_path=&quot;$RUNNER_TEMP/repository-archive&quot;
++          if git ls-remote --exit-code --heads origin &quot;$ARCHIVE_BRANCH&quot; &gt;/dev/null; then
++            git fetch origin &quot;$ARCHIVE_BRANCH&quot;
++            git worktree add --detach &quot;$archive_path&quot; FETCH_HEAD
++          else
++            git worktree add --detach &quot;$archive_path&quot; HEAD
++            git -C &quot;$archive_path&quot; switch --orphan archive-root</pre><h2>Inline review: tools/repository_dump.py</h2><pre>Any URL whose host starts with `github-production-user-asset-` is treated as an upload, while `trusted_download` accepts any matching S3 bucket. A repository commenter can therefore make the action fetch an attacker-controlled public object instead of a GitHub upload. Only accept GitHub upload URLs initially; keep the S3 pattern for redirects from GitHub storage (or otherwise bind the redirect origin).</pre><h2>Diff context</h2><pre>@@ -0,0 +1,478 @@
++#!/usr/bin/env python3
++&quot;&quot;&quot;Archive GitHub conversations and uploaded media. Python 3.10+, no dependencies.&quot;&quot;&quot;
++from __future__ import annotations
++
++import argparse
++import hashlib
++import html
++import json
++import mimetypes
++import os
++from pathlib import Path
++import re
++import sys
++import time
++from datetime import datetime, timezone
++from concurrent.futures import ThreadPoolExecutor, as_completed
++from urllib.error import HTTPError, URLError
++from urllib.parse import urljoin, urlsplit, urlunsplit
++from urllib.request import Request, build_opener, HTTPRedirectHandler
++
++API = &#x27;https://api.github.com&#x27;
++BLOCK_SIZE = 1024 * 1024
++PART_SIZE = 40 * BLOCK_SIZE  # GitHub&#x27;s regular Git object limit is 100 MiB.
++URL_RE = re.compile(r&#x27;https://[^\s&lt;&gt;&quot;\x27`]+&#x27;)
++
++
++def timestamp():
++    return datetime.now(timezone.utc).isoformat()
++
++
++def digest(path):
++    with path.open(&#x27;rb&#x27;) as source:
++        return hashlib.file_digest(source, &#x27;sha256&#x27;).hexdigest() if hasattr(hashlib, &#x27;file_digest&#x27;) else _hash_stream(source)
++
++
++def _hash_stream(source):
++    result = hashlib.sha256()
++    for block in iter(lambda: source.read(BLOCK_SIZE), b&#x27;&#x27;):
++        result.update(block)
++    return result.hexdigest()
++
++
++def write_json(path, value):
++    path.parent.mkdir(parents=True, exist_ok=True)
++    temporary = path.with_name(path.name + &#x27;.tmp&#x27;)
++    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + &#x27;\n&#x27;, encoding=&#x27;utf-8&#x27;)
++    temporary.replace(path)
++
++
++def safe_child(root, relative):
++    root = root.resolve()
++    path = (root / relative).resolve()
++    if path == root or root not in path.parents:
++        raise ValueError(&#x27;Archive path escapes its destination&#x27;)
++    return path
++
++
++def trusted_download(url):
++    value = urlsplit(url)
++    host = value.hostname or &#x27;&#x27;
++    if value.scheme != &#x27;https&#x27; or value.username or value.password or value.port not in (None, 443):
++        return False
++    return (host in {&#x27;github.com&#x27;, &#x27;api.github.com&#x27;, &#x27;codeload.github.com&#x27;, &#x27;github-cloud.s3.amazonaws.com&#x27;}
++            or host.endswith(&#x27;.githubusercontent.com&#x27;)
++            or bool(re.fullmatch(r&#x27;github-production-[a-z0-9-]+\.s3\.amazonaws\.com&#x27;, host)))
++
++
++class SafeRedirect(HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        newurl = urljoin(req.full_url, newurl)
++        if not trusted_download(newurl):
++            raise ValueError(&#x27;Refusing a redirect outside GitHub file storage&#x27;)
++        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
++        if urlsplit(newurl).netloc != urlsplit(req.full_url).netloc:
++            redirected.remove_header(&#x27;Authorization&#x27;)
++        return redirected
++
++
++class GitHub:
++    def __init__(self, token=None, opener=None, sleep=time.sleep):
++        self.token = token
++        self.opener = opener or build_opener(SafeRedirect())
++        self.sleep = sleep
++        self.requests = 0
++
++    def open(self, url, binary=False):
++        if not trusted_download(url):
++            raise ValueError(&#x27;Refusing an untrusted download URL&#x27;)
++        parsed = urlsplit(url)
++        # Source-archive endpoints redirect to a binary but require the JSON
++        # media type at the API. octet-stream is specific to release assets.
++        asset_api = parsed.hostname == &#x27;api.github.com&#x27; and &#x27;/releases/assets/&#x27; in parsed.path
++        accept = &#x27;application/vnd.github+json&#x27;
++        if binary:
++            if asset_api:
++                accept = &#x27;application/octet-stream&#x27;
++            elif parsed.hostname != &#x27;api.github.com&#x27;:
++                accept = &#x27;*/*&#x27;
++        headers = {&#x27;User-Agent&#x27;: &#x27;repository-dump/1.0&#x27;,
++                   &#x27;Accept&#x27;: accept,
++                   &#x27;X-GitHub-Api-Version&#x27;: &#x27;2022-11-28&#x27;}
++        if self.token and parsed.hostname == &#x27;api.github.com&#x27;:
++            headers[&#x27;Authorization&#x27;] = &#x27;Bearer &#x27; + self.token
++        for attempt in range(4):
++            try:
++                self.requests += 1
++                return self.opener.open(Request(url, headers=headers), timeout=60)
++            except HTTPError as error:
++                retryable = error.code in (429, 500, 502, 503, 504) or (error.code == 403 and error.headers.get(&#x27;Retry-After&#x27;))
++                if not retryable or attempt == 3:
++                    raise RuntimeError(f&#x27;GitHub returned HTTP {error.code}; check access and rate limits&#x27;) from None
++                delay = error.headers.get(&#x27;Retry-After&#x27;, str(2 ** attempt))
++                try:
++                    delay = float(delay)
++                except ValueError:
++                    delay = 2 ** attempt
++                if delay &gt; 60:
++                    raise RuntimeError(&#x27;GitHub requested a long rate-limit wait; rerun later&#x27;) from None
++                self.sleep(max(0, delay))
++            except (URLError, TimeoutError):
++                if attempt == 3:
++                    raise RuntimeError(&#x27;Network request failed after four attempts&#x27;) from None
++                self.sleep(2 ** attempt)
++
++    def one(self, path):
++        with self.open(API + path) as response:
++            return json.load(response)
++
++    def pages(self, path):
++        url = API + path + (&#x27;&amp;&#x27; if &#x27;?&#x27; in path else &#x27;?&#x27;) + &#x27;per_page=100&#x27;
++        seen = set()
++        result = []
++        while url:
++            if url in seen or urlsplit(url).netloc != &#x27;api.github.com&#x27;:
++                raise RuntimeError(&#x27;Invalid GitHub pagination link&#x27;)
++            seen.add(url)
++            with self.open(url) as response:
++                page = json.load(response)
++                if not isinstance(page, list):
++                    raise RuntimeError(&#x27;GitHub returned an unexpected list response&#x27;)
++                result.extend(page)
++                link = response.headers.get(&#x27;Link&#x27;, &#x27;&#x27;)
++            match = re.search(r&#x27;&lt;([^&gt;]+)&gt;;\s*rel=&quot;next&quot;&#x27;, link)
++            url = match.group(1) if match else None
++        return result
++
++
++def uploaded_urls(text):
++    &quot;&quot;&quot;GitHub uploads in Markdown, HTML, bare video URLs, and reference links.&quot;&quot;&quot;
++    found = set()
++    for match in URL_RE.finditer(html.unescape(text or &#x27;&#x27;)):
++        url = match.group().rstrip(&#x27;.,;:!?&#x27;)
++        # Markdown closing parentheses are not part of a bare GitHub upload URL.
++        while url.endswith(&#x27;)&#x27;) and url.count(&#x27;)&#x27;) &gt; url.count(&#x27;(&#x27;):
++            url = url[:-1]
++        url = url.rstrip(&#x27;]&#x27;)
++        try:
++            parsed = urlsplit(url)
++            if not trusted_download(url):
++                continue
++        except ValueError:
++            continue
++        host = parsed.hostname or &#x27;&#x27;
++        uuid = r&#x27;[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}&#x27;
++        is_upload = ((host == &#x27;github.com&#x27; and
++                      (re.fullmatch(r&#x27;/user-attachments/assets/&#x27; + uuid, parsed.path) or
++                       re.match(r&#x27;^/user-attachments/files/[0-9]+/[^/]+&#x27;, parsed.path) or
++                       re.match(r&#x27;^/[^/]+/[^/]+/files/[0-9]+/[^/]+&#x27;, parsed.path) or
++                       re.fullmatch(r&#x27;/[^/]+/[^/]+/assets/[0-9]+/&#x27; + uuid, parsed.path)))
++                     or host in {&#x27;user-images.githubusercontent.com&#x27;, &#x27;private-user-images.githubusercontent.com&#x27;, &#x27;secured-user-images.githubusercontent.com&#x27;}
++                     or host.startswith(&#x27;github-production-user-asset-&#x27;))</pre><h2>Inline review: .github/workflows/test-repository-dump.yml</h2><pre>This workflow is the matrix that runs the Python test suite on both Linux and Windows, but neither the `pull_request` nor `push` path filters includes `tools/publish_archive.py` or `tests/test_publish_archive.py`. A publisher-only change can therefore merge without running the tests that cover it; add both files to each filter.</pre><h2>Diff context</h2><pre>@@ -0,0 +1,23 @@
++name: Test repository export tool
++on:
++  pull_request:
++    paths:
++      - &#x27;tools/repository_dump.py&#x27;
++      - &#x27;tests/test_repository_dump.py&#x27;
++      - &#x27;.github/workflows/*repository-dump.yml&#x27;
++  push:
++    paths:
++      - &#x27;tools/repository_dump.py&#x27;
++      - &#x27;tests/test_repository_dump.py&#x27;
++      - &#x27;.github/workflows/*repository-dump.yml&#x27;</pre><h2>Inline review: tools/publish_archive.py</h2><pre>Only downloaded media is split by `repository_dump.py`; generated metadata such as `issue-comments.json`, `issue-index.json`, and per-PR `files.json` is written as one file. A repository with enough discussion or patch data can exceed 40 MiB, causing this guard to abort publication even though the export is otherwise complete, contrary to the documented large-file handling. Chunk generated metadata as well (or use another size-safe representation) before enforcing the archive file limit.</pre><h2>Diff context</h2><pre>@@ -0,0 +1,77 @@
++&quot;&quot;&quot;Publish an archive in small, retryable pushes with an explicit pending state.&quot;&quot;&quot;
++import argparse
++import json
++import os
++from pathlib import Path
++import subprocess
++import time
++
++
++def publish(root, branch=&#x27;repository-archive&#x27;, batch_bytes=64 * 1024 * 1024, sleep=time.sleep):
++    root = Path(root).resolve()
++    if branch != &#x27;repository-archive&#x27;:
++        raise ValueError(&#x27;Only the dedicated repository-archive branch may be published&#x27;)
++
++    def git(*args, capture=False, check=True):
++        return subprocess.run([&#x27;git&#x27;, &#x27;-C&#x27;, str(root), *args], check=check,
++                              stdout=subprocess.PIPE if capture else None)
++
++    def save(paths, message):
++        for offset in range(0, len(paths), 100):
++            git(&#x27;add&#x27;, &#x27;--&#x27;, *paths[offset:offset + 100])
++        changed = git(&#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--quiet&#x27;, check=False).returncode
++        if changed == 0:
++            return
++        if changed != 1:
++            raise RuntimeError(&#x27;Could not inspect staged archive changes&#x27;)
++        git(&#x27;commit&#x27;, &#x27;-m&#x27;, message)
++        for attempt in range(3):
++            result = git(&#x27;push&#x27;, &#x27;origin&#x27;, f&#x27;HEAD:refs/heads/{branch}&#x27;, check=False)
++            if result.returncode == 0:
++                return
++            if attempt &lt; 2:
++                sleep(2 ** (attempt + 1))
++        raise RuntimeError(&#x27;Archive push failed after three attempts; see Git output&#x27;)
++
++    report_path = root / &#x27;archive/report.json&#x27;
++    readme_path = root / &#x27;archive/README.md&#x27;
++    final_report, final_readme = report_path.read_bytes(), readme_path.read_bytes()
++    report = json.loads(final_report)
++    report.update(complete=False, publication_in_progress=True)
++    report_path.write_text(json.dumps(report, indent=2) + &#x27;\n&#x27;, encoding=&#x27;utf-8&#x27;)
++    readme_path.write_text(&#x27;# Archive publication in progress\n\n&#x27;
++                          &#x27;This branch is incomplete until the final publication commit. &#x27;
++                          &#x27;Check the Actions run for its status.\n&#x27;, encoding=&#x27;utf-8&#x27;)
++    save([&#x27;archive/report.json&#x27;, &#x27;archive/README.md&#x27;], &#x27;Mark archive publication in progress&#x27;)
++
++    changed = git(&#x27;ls-files&#x27;, &#x27;--others&#x27;, &#x27;--modified&#x27;, &#x27;--deleted&#x27;,
++                  &#x27;--exclude-standard&#x27;, &#x27;-z&#x27;, &#x27;--&#x27;, &#x27;archive&#x27;, capture=True).stdout
++    paths = sorted(set(os.fsdecode(p) for p in changed.split(b&#x27;\0&#x27;) if p))
++    batch, weight = [], 0
++    for relative in paths:
++        if relative in (&#x27;archive/report.json&#x27;, &#x27;archive/README.md&#x27;, &#x27;archive/checksums.json&#x27;):
++            continue
++        path = root / relative
++        if path.is_symlink() or not path.resolve().is_relative_to(root / &#x27;archive&#x27;):
++            raise ValueError(&#x27;Archive contains an unsafe path&#x27;)
++        size = path.stat().st_size if path.exists() else 0
++        if size &gt; 40 * 1024 * 1024:
++            raise ValueError(&#x27;Unexpected oversized archive file; export must split large assets&#x27;)</pre><h2>Inline review: tools/repository_dump.py</h2><pre>The final replacement turns an inline bare upload such as `See &lt;upload-url&gt; for details` into plain `See ../../assets/&lt;hash&gt;` text. Relative paths are not autolinked by Markdown, so these supported bare media references are not clickable in the archived page; only whole-line URLs and angle autolinks are converted to links. Preserve the existing Markdown/HTML cases while wrapping remaining bare occurrences in a local Markdown link.</pre><h2>Diff context</h2><pre>@@ -0,0 +1,478 @@
++#!/usr/bin/env python3
++&quot;&quot;&quot;Archive GitHub conversations and uploaded media. Python 3.10+, no dependencies.&quot;&quot;&quot;
++from __future__ import annotations
++
++import argparse
++import hashlib
++import html
++import json
++import mimetypes
++import os
++from pathlib import Path
++import re
++import sys
++import time
++from datetime import datetime, timezone
++from concurrent.futures import ThreadPoolExecutor, as_completed
++from urllib.error import HTTPError, URLError
++from urllib.parse import urljoin, urlsplit, urlunsplit
++from urllib.request import Request, build_opener, HTTPRedirectHandler
++
++API = &#x27;https://api.github.com&#x27;
++BLOCK_SIZE = 1024 * 1024
++PART_SIZE = 40 * BLOCK_SIZE  # GitHub&#x27;s regular Git object limit is 100 MiB.
++URL_RE = re.compile(r&#x27;https://[^\s&lt;&gt;&quot;\x27`]+&#x27;)
++
++
++def timestamp():
++    return datetime.now(timezone.utc).isoformat()
++
++
++def digest(path):
++    with path.open(&#x27;rb&#x27;) as source:
++        return hashlib.file_digest(source, &#x27;sha256&#x27;).hexdigest() if hasattr(hashlib, &#x27;file_digest&#x27;) else _hash_stream(source)
++
++
++def _hash_stream(source):
++    result = hashlib.sha256()
++    for block in iter(lambda: source.read(BLOCK_SIZE), b&#x27;&#x27;):
++        result.update(block)
++    return result.hexdigest()
++
++
++def write_json(path, value):
++    path.parent.mkdir(parents=True, exist_ok=True)
++    temporary = path.with_name(path.name + &#x27;.tmp&#x27;)
++    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + &#x27;\n&#x27;, encoding=&#x27;utf-8&#x27;)
++    temporary.replace(path)
++
++
++def safe_child(root, relative):
++    root = root.resolve()
++    path = (root / relative).resolve()
++    if path == root or root not in path.parents:
++        raise ValueError(&#x27;Archive path escapes its destination&#x27;)
++    return path
++
++
++def trusted_download(url):
++    value = urlsplit(url)
++    host = value.hostname or &#x27;&#x27;
++    if value.scheme != &#x27;https&#x27; or value.username or value.password or value.port not in (None, 443):
++        return False
++    return (host in {&#x27;github.com&#x27;, &#x27;api.github.com&#x27;, &#x27;codeload.github.com&#x27;, &#x27;github-cloud.s3.amazonaws.com&#x27;}
++            or host.endswith(&#x27;.githubusercontent.com&#x27;)
++            or bool(re.fullmatch(r&#x27;github-production-[a-z0-9-]+\.s3\.amazonaws\.com&#x27;, host)))
++
++
++class SafeRedirect(HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        newurl = urljoin(req.full_url, newurl)
++        if not trusted_download(newurl):
++            raise ValueError(&#x27;Refusing a redirect outside GitHub file storage&#x27;)
++        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
++        if urlsplit(newurl).netloc != urlsplit(req.full_url).netloc:
++            redirected.remove_header(&#x27;Authorization&#x27;)
++        return redirected
++
++
++class GitHub:
++    def __init__(self, token=None, opener=None, sleep=time.sleep):
++        self.token = token
++        self.opener = opener or build_opener(SafeRedirect())
++        self.sleep = sleep
++        self.requests = 0
++
++    def open(self, url, binary=False):
++        if not trusted_download(url):
++            raise ValueError(&#x27;Refusing an untrusted download URL&#x27;)
++        parsed = urlsplit(url)
++        # Source-archive endpoints redirect to a binary but require the JSON
++        # media type at the API. octet-stream is specific to release assets.
++        asset_api = parsed.hostname == &#x27;api.github.com&#x27; and &#x27;/releases/assets/&#x27; in parsed.path
++        accept = &#x27;application/vnd.github+json&#x27;
++        if binary:
++            if asset_api:
++                accept = &#x27;application/octet-stream&#x27;
++            elif parsed.hostname != &#x27;api.github.com&#x27;:
++                accept = &#x27;*/*&#x27;
++        headers = {&#x27;User-Agent&#x27;: &#x27;repository-dump/1.0&#x27;,
++                   &#x27;Accept&#x27;: accept,
++                   &#x27;X-GitHub-Api-Version&#x27;: &#x27;2022-11-28&#x27;}
++        if self.token and parsed.hostname == &#x27;api.github.com&#x27;:
++            headers[&#x27;Authorization&#x27;] = &#x27;Bearer &#x27; + self.token
++        for attempt in range(4):
++            try:
++                self.requests += 1
++                return self.opener.open(Request(url, headers=headers), timeout=60)
++            except HTTPError as error:
++                retryable = error.code in (429, 500, 502, 503, 504) or (error.code == 403 and error.headers.get(&#x27;Retry-After&#x27;))
++                if not retryable or attempt == 3:
++                    raise RuntimeError(f&#x27;GitHub returned HTTP {error.code}; check access and rate limits&#x27;) from None
++                delay = error.headers.get(&#x27;Retry-After&#x27;, str(2 ** attempt))
++                try:
++                    delay = float(delay)
++                except ValueError:
++                    delay = 2 ** attempt
++                if delay &gt; 60:
++                    raise RuntimeError(&#x27;GitHub requested a long rate-limit wait; rerun later&#x27;) from None
++                self.sleep(max(0, delay))
++            except (URLError, TimeoutError):
++                if attempt == 3:
++                    raise RuntimeError(&#x27;Network request failed after four attempts&#x27;) from None
++                self.sleep(2 ** attempt)
++
++    def one(self, path):
++        with self.open(API + path) as response:
++            return json.load(response)
++
++    def pages(self, path):
++        url = API + path + (&#x27;&amp;&#x27; if &#x27;?&#x27; in path else &#x27;?&#x27;) + &#x27;per_page=100&#x27;
++        seen = set()
++        result = []
++        while url:
++            if url in seen or urlsplit(url).netloc != &#x27;api.github.com&#x27;:
++                raise RuntimeError(&#x27;Invalid GitHub pagination link&#x27;)
++            seen.add(url)
++            with self.open(url) as response:
++                page = json.load(response)
++                if not isinstance(page, list):
++                    raise RuntimeError(&#x27;GitHub returned an unexpected list response&#x27;)
++                result.extend(page)
++                link = response.headers.get(&#x27;Link&#x27;, &#x27;&#x27;)
++            match = re.search(r&#x27;&lt;([^&gt;]+)&gt;;\s*rel=&quot;next&quot;&#x27;, link)
++            url = match.group(1) if match else None
++        return result
++
++
++def uploaded_urls(text):
++    &quot;&quot;&quot;GitHub uploads in Markdown, HTML, bare video URLs, and reference links.&quot;&quot;&quot;
++    found = set()
++    for match in URL_RE.finditer(html.unescape(text or &#x27;&#x27;)):
++        url = match.group().rstrip(&#x27;.,;:!?&#x27;)
++        # Markdown closing parentheses are not part of a bare GitHub upload URL.
++        while url.endswith(&#x27;)&#x27;) and url.count(&#x27;)&#x27;) &gt; url.count(&#x27;(&#x27;):
++            url = url[:-1]
++        url = url.rstrip(&#x27;]&#x27;)
++        try:
++            parsed = urlsplit(url)
++            if not trusted_download(url):
++                continue
++        except ValueError:
++            continue
++        host = parsed.hostname or &#x27;&#x27;
++        uuid = r&#x27;[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}&#x27;
++        is_upload = ((host == &#x27;github.com&#x27; and
++                      (re.fullmatch(r&#x27;/user-attachments/assets/&#x27; + uuid, parsed.path) or
++                       re.match(r&#x27;^/user-attachments/files/[0-9]+/[^/]+&#x27;, parsed.path) or
++                       re.match(r&#x27;^/[^/]+/[^/]+/files/[0-9]+/[^/]+&#x27;, parsed.path) or
++                       re.fullmatch(r&#x27;/[^/]+/[^/]+/assets/[0-9]+/&#x27; + uuid, parsed.path)))
++                     or host in {&#x27;user-images.githubusercontent.com&#x27;, &#x27;private-user-images.githubusercontent.com&#x27;, &#x27;secured-user-images.githubusercontent.com&#x27;}
++                     or host.startswith(&#x27;github-production-user-asset-&#x27;))
++        if is_upload and trusted_download(url):
++            found.add(urlunsplit(parsed._replace(fragment=&#x27;&#x27;)))
++    return sorted(found)
++
++
++def text_fields(value):
++    if isinstance(value, dict):
++        for key, child in value.items():
++            if key in {&#x27;body&#x27;, &#x27;description&#x27;} and isinstance(child, str):
++                yield child
++            elif isinstance(child, (dict, list)):
++                yield from text_fields(child)
++    elif isinstance(value, list):
++        for child in value:
++            yield from text_fields(child)
++
++
++class Archive:
++    def __init__(self, github, repository, output, workers=4):
++        if (not re.fullmatch(r&#x27;[A-Za-z0-9-]+/[A-Za-z0-9_.-]+&#x27;, repository)
++                or repository.split(&#x27;/&#x27;)[-1] in {&#x27;.&#x27;, &#x27;..&#x27;}):
++            raise ValueError(&#x27;Repository must be owner/name&#x27;)
++        self.github, self.repository, self.output = github, repository, Path(output)
++        self.workers = workers
++        self.prefix = &#x27;/repos/&#x27; + repository
++        self.output.mkdir(parents=True, exist_ok=True)
++        if any(path.is_symlink() for path in self.output.rglob(&#x27;*&#x27;)):
++            raise ValueError(&#x27;Archive output contains symlinks; use a dedicated directory without symlinks&#x27;)
++        self.media = {}
++        previous = self.output / &#x27;assets.json&#x27;
++        self.previous = json.loads(previous.read_text(encoding=&#x27;utf-8&#x27;)) if previous.exists() else {}
++        self.report = {&#x27;repository&#x27;: repository, &#x27;started_at&#x27;: timestamp(), &#x27;complete&#x27;: False,
++                       &#x27;errors&#x27;: [], &#x27;counts&#x27;: {}, &#x27;scope&#x27;: &#x27;Current accessible GitHub API records, including open and closed issues and PRs, reviews, release assets, and GitHub-hosted uploads. Deleted records and historical edits are not exposed by these APIs.&#x27;}
++
++    def cached(self, record):
++        try:
++            return bool(record.get(&#x27;parts&#x27;)) and all(
++                (path := safe_child(self.output, part[&#x27;path&#x27;])).is_file()
++                and path.stat().st_size == part[&#x27;bytes&#x27;] and digest(path) == part[&#x27;sha256&#x27;]
++                for part in record[&#x27;parts&#x27;])
++        except (OSError, ValueError, KeyError):
++            return False
++
++    def download(self, url, name=None, expected_size=None, version=None):
++        if url in self.media:
++            return
++        previous = self.previous.get(url, {})
++        if previous.get(&#x27;status&#x27;) == &#x27;saved&#x27; and previous.get(&#x27;version&#x27;) == version and self.cached(previous) and (expected_size is None or previous.get(&#x27;bytes&#x27;) == expected_size):
++            self.media[url] = previous
++            return
++        record = {&#x27;source&#x27;: url, &#x27;status&#x27;: &#x27;failed&#x27;, &#x27;parts&#x27;: [], &#x27;version&#x27;: version}
++        temporary = self.output / &#x27;assets&#x27; / (hashlib.sha256(url.encode()).hexdigest() + &#x27;.download&#x27;)
++        temporary.parent.mkdir(parents=True, exist_ok=True)
++        try:
++            total = 0
++            full_hash = hashlib.sha256()
++            with self.github.open(url, binary=True) as response:
++                content_type = response.headers.get(&#x27;Content-Type&#x27;, &#x27;application/octet-stream&#x27;).split(&#x27;;&#x27;)[0]
++                if (content_type == &#x27;text/html&#x27; and expected_size is None
++                        and &#x27;attachment&#x27; not in response.headers.get(&#x27;Content-Disposition&#x27;, &#x27;&#x27;).lower()
++                        and not urlsplit(url).path.lower().endswith((&#x27;.html&#x27;, &#x27;.htm&#x27;))):
++                    raise ValueError(&#x27;Expected an uploaded file, received an HTML page&#x27;)
++                with temporary.open(&#x27;wb&#x27;) as target:
++                    while block := response.read(BLOCK_SIZE):
++                        target.write(block)
++                        full_hash.update(block)
++                        total += len(block)
++                declared = response.headers.get(&#x27;Content-Length&#x27;)
++                if declared is not None and total != int(declared):
++                    raise ValueError(&#x27;Download is truncated (Content-Length mismatch)&#x27;)
++                if expected_size is not None and total != expected_size:
++                    raise ValueError(&#x27;Download size differs from release metadata&#x27;)
++                disposition = response.headers.get(&#x27;Content-Disposition&#x27;, &#x27;&#x27;)
++            remote_name = name or (re.search(r&#x27;filename=&quot;?([^&quot;;]+)&#x27;, disposition).group(1) if re.search(r&#x27;filename=&quot;?([^&quot;;]+)&#x27;, disposition) else Path(urlsplit(url).path).name)
++            if not Path(remote_name).suffix:
++                remote_name += mimetypes.guess_extension(content_type) or &#x27;.bin&#x27;
++            extension = Path(remote_name).suffix.lower()
++            if not re.fullmatch(r&#x27;\.[a-z0-9]{1,10}&#x27;, extension):
++                extension = mimetypes.guess_extension(content_type) or &#x27;.bin&#x27;
++            extension = {&#x27;.jpe&#x27;: &#x27;.jpg&#x27;, &#x27;.jpeg&#x27;: &#x27;.jpg&#x27;}.get(extension, extension)
++            stem = full_hash.hexdigest()
++            if total &lt;= PART_SIZE:
++                destination = temporary.parent / (stem + extension)
++                temporary.replace(destination)
++                record[&#x27;parts&#x27;] = [{&#x27;path&#x27;: destination.relative_to(self.output).as_posix(), &#x27;bytes&#x27;: total, &#x27;sha256&#x27;: stem}]
++            else:
++                with temporary.open(&#x27;rb&#x27;) as source:
++                    part_number = 0
++                    while part := source.read(PART_SIZE):
++                        part_number += 1
++                        destination = temporary.parent / f&#x27;{stem}{extension}.part{part_number:04d}&#x27;
++                        destination.write_bytes(part)
++                        record[&#x27;parts&#x27;].append({&#x27;path&#x27;: destination.relative_to(self.output).as_posix(), &#x27;bytes&#x27;: len(part), &#x27;sha256&#x27;: hashlib.sha256(part).hexdigest()})
++                temporary.unlink()
++            record.update(status=&#x27;saved&#x27;, name=remote_name, bytes=total, sha256=stem, content_type=content_type)
++        except Exception as error:
++            temporary.unlink(missing_ok=True)
++            record[&#x27;error&#x27;] = str(error)
++            self.report[&#x27;errors&#x27;].append({&#x27;source&#x27;: url, &#x27;error&#x27;: str(error)})
++        self.media[url] = record
++
++    def localize(self, body):
++        body = body or &#x27;&#x27;
++        for url in sorted(self.media, key=len, reverse=True):
++            asset = self.media[url]
++            if asset[&#x27;status&#x27;] == &#x27;saved&#x27; and len(asset[&#x27;parts&#x27;]) == 1:
++                local = &#x27;../../&#x27; + asset[&#x27;parts&#x27;][0][&#x27;path&#x27;]
++                link = &#x27;[Open saved attachment](&#x27; + local + &#x27;)&#x27;
++                # Relative paths are not autolinked by Markdown renderers.
++                # Preserve clickable bare video/audio URLs and &lt;autolinks&gt;.
++                body = re.sub(r&#x27;(?m)^[ \t]*&#x27; + re.escape(url) + r&#x27;[ \t]*\r?$&#x27;,
++                              lambda match: link, body)
++                body = body.replace(&#x27;&lt;&#x27; + url + &#x27;&gt;&#x27;, link)
++                body = body.replace(url, local)</pre></body></html>

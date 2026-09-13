@@ -1,0 +1,69 @@
+{
+  "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346287",
+  "pull_request_review_id": 5190389172,
+  "id": 3999346287,
+  "node_id": "PRRC_kwDOUIkZ-s7uYS5v",
+  "diff_hunk": "@@ -0,0 +1,91 @@\n+name: Save repository history and media\n+\n+on:\n+  workflow_dispatch:\n+    inputs:\n+      source_repository:\n+        description: 'Repository to save (owner/name). Leave blank for this repository.'\n+        required: false\n+        type: string\n+\n+permissions:\n+  contents: write\n+  issues: read\n+  pull-requests: read\n+\n+concurrency:\n+  group: repository-archive\n+  cancel-in-progress: false\n+\n+jobs:\n+  archive:\n+    runs-on: ubuntu-latest\n+    timeout-minutes: 90\n+    env:\n+      ARCHIVE_BRANCH: repository-archive\n+      SOURCE_REPOSITORY: ${{ inputs.source_repository || vars.REPOSITORY_DUMP_SOURCE || github.repository }}\n+    steps:\n+      - name: Get the export tool\n+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n+        with:\n+          fetch-depth: 1\n+\n+      - name: Test the export tool\n+        run: python3 -m unittest discover -s tests -v\n+\n+      - name: Prepare archive branch\n+        shell: bash\n+        run: |\n+          archive_path=\"$RUNNER_TEMP/repository-archive\"\n+          if git ls-remote --exit-code --heads origin \"$ARCHIVE_BRANCH\" >/dev/null; then\n+            git fetch origin \"$ARCHIVE_BRANCH\"\n+            git worktree add --detach \"$archive_path\" FETCH_HEAD\n+          else\n+            git worktree add --detach \"$archive_path\" HEAD\n+            git -C \"$archive_path\" switch --orphan archive-root",
+  "path": ".github/workflows/repository-dump.yml",
+  "commit_id": "f61d55b8a3cd7783cb2266e99da539cdb5418467",
+  "original_commit_id": "f61d55b8a3cd7783cb2266e99da539cdb5418467",
+  "user": {
+    "login": "Copilot",
+    "id": 175728472,
+    "node_id": "BOT_kgDOCnlnWA",
+    "avatar_url": "https://avatars.githubusercontent.com/in/946600?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/Copilot",
+    "html_url": "https://github.com/apps/copilot-pull-request-reviewer",
+    "followers_url": "https://api.github.com/users/Copilot/followers",
+    "following_url": "https://api.github.com/users/Copilot/following{/other_user}",
+    "gists_url": "https://api.github.com/users/Copilot/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/Copilot/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/Copilot/subscriptions",
+    "organizations_url": "https://api.github.com/users/Copilot/orgs",
+    "repos_url": "https://api.github.com/users/Copilot/repos",
+    "events_url": "https://api.github.com/users/Copilot/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/Copilot/received_events",
+    "type": "Bot",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "body": "When no archive branch exists, `git switch --orphan` leaves the checked-out source tree in the index/worktree. The publisher's first staged commit can therefore include every source file, so the supposedly dedicated archive branch duplicates the repository and can bypass the 40 MiB archive-file guard. Clear the orphan index/worktree before exporting.",
+  "created_at": "2026-09-13T10:10:41Z",
+  "updated_at": "2026-09-13T10:10:42Z",
+  "html_url": "https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/69#discussion_r3999346287",
+  "pull_request_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/69",
+  "_links": {
+    "self": {
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346287"
+    },
+    "html": {
+      "href": "https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/69#discussion_r3999346287"
+    },
+    "pull_request": {
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/69"
+    }
+  },
+  "reactions": {
+    "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346287/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "start_line": null,
+  "original_start_line": null,
+  "start_side": null,
+  "line": 45,
+  "original_line": 45,
+  "side": "RIGHT",
+  "author_association": "NONE",
+  "original_position": 45,
+  "position": 45,
+  "subject_type": "line"
+}

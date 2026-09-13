@@ -1,0 +1,69 @@
+{
+  "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346300",
+  "pull_request_review_id": 5190389172,
+  "id": 3999346300,
+  "node_id": "PRRC_kwDOUIkZ-s7uYS58",
+  "diff_hunk": "@@ -0,0 +1,478 @@\n+#!/usr/bin/env python3\n+\"\"\"Archive GitHub conversations and uploaded media. Python 3.10+, no dependencies.\"\"\"\n+from __future__ import annotations\n+\n+import argparse\n+import hashlib\n+import html\n+import json\n+import mimetypes\n+import os\n+from pathlib import Path\n+import re\n+import sys\n+import time\n+from datetime import datetime, timezone\n+from concurrent.futures import ThreadPoolExecutor, as_completed\n+from urllib.error import HTTPError, URLError\n+from urllib.parse import urljoin, urlsplit, urlunsplit\n+from urllib.request import Request, build_opener, HTTPRedirectHandler\n+\n+API = 'https://api.github.com'\n+BLOCK_SIZE = 1024 * 1024\n+PART_SIZE = 40 * BLOCK_SIZE  # GitHub's regular Git object limit is 100 MiB.\n+URL_RE = re.compile(r'https://[^\\s<>\"\\x27`]+')\n+\n+\n+def timestamp():\n+    return datetime.now(timezone.utc).isoformat()\n+\n+\n+def digest(path):\n+    with path.open('rb') as source:\n+        return hashlib.file_digest(source, 'sha256').hexdigest() if hasattr(hashlib, 'file_digest') else _hash_stream(source)\n+\n+\n+def _hash_stream(source):\n+    result = hashlib.sha256()\n+    for block in iter(lambda: source.read(BLOCK_SIZE), b''):\n+        result.update(block)\n+    return result.hexdigest()\n+\n+\n+def write_json(path, value):\n+    path.parent.mkdir(parents=True, exist_ok=True)\n+    temporary = path.with_name(path.name + '.tmp')\n+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\\n', encoding='utf-8')\n+    temporary.replace(path)\n+\n+\n+def safe_child(root, relative):\n+    root = root.resolve()\n+    path = (root / relative).resolve()\n+    if path == root or root not in path.parents:\n+        raise ValueError('Archive path escapes its destination')\n+    return path\n+\n+\n+def trusted_download(url):\n+    value = urlsplit(url)\n+    host = value.hostname or ''\n+    if value.scheme != 'https' or value.username or value.password or value.port not in (None, 443):\n+        return False\n+    return (host in {'github.com', 'api.github.com', 'codeload.github.com', 'github-cloud.s3.amazonaws.com'}\n+            or host.endswith('.githubusercontent.com')\n+            or bool(re.fullmatch(r'github-production-[a-z0-9-]+\\.s3\\.amazonaws\\.com', host)))\n+\n+\n+class SafeRedirect(HTTPRedirectHandler):\n+    def redirect_request(self, req, fp, code, msg, headers, newurl):\n+        newurl = urljoin(req.full_url, newurl)\n+        if not trusted_download(newurl):\n+            raise ValueError('Refusing a redirect outside GitHub file storage')\n+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)\n+        if urlsplit(newurl).netloc != urlsplit(req.full_url).netloc:\n+            redirected.remove_header('Authorization')\n+        return redirected\n+\n+\n+class GitHub:\n+    def __init__(self, token=None, opener=None, sleep=time.sleep):\n+        self.token = token\n+        self.opener = opener or build_opener(SafeRedirect())\n+        self.sleep = sleep\n+        self.requests = 0\n+\n+    def open(self, url, binary=False):\n+        if not trusted_download(url):\n+            raise ValueError('Refusing an untrusted download URL')\n+        parsed = urlsplit(url)\n+        # Source-archive endpoints redirect to a binary but require the JSON\n+        # media type at the API. octet-stream is specific to release assets.\n+        asset_api = parsed.hostname == 'api.github.com' and '/releases/assets/' in parsed.path\n+        accept = 'application/vnd.github+json'\n+        if binary:\n+            if asset_api:\n+                accept = 'application/octet-stream'\n+            elif parsed.hostname != 'api.github.com':\n+                accept = '*/*'\n+        headers = {'User-Agent': 'repository-dump/1.0',\n+                   'Accept': accept,\n+                   'X-GitHub-Api-Version': '2022-11-28'}\n+        if self.token and parsed.hostname == 'api.github.com':\n+            headers['Authorization'] = 'Bearer ' + self.token\n+        for attempt in range(4):\n+            try:\n+                self.requests += 1\n+                return self.opener.open(Request(url, headers=headers), timeout=60)\n+            except HTTPError as error:\n+                retryable = error.code in (429, 500, 502, 503, 504) or (error.code == 403 and error.headers.get('Retry-After'))\n+                if not retryable or attempt == 3:\n+                    raise RuntimeError(f'GitHub returned HTTP {error.code}; check access and rate limits') from None\n+                delay = error.headers.get('Retry-After', str(2 ** attempt))\n+                try:\n+                    delay = float(delay)\n+                except ValueError:\n+                    delay = 2 ** attempt\n+                if delay > 60:\n+                    raise RuntimeError('GitHub requested a long rate-limit wait; rerun later') from None\n+                self.sleep(max(0, delay))\n+            except (URLError, TimeoutError):\n+                if attempt == 3:\n+                    raise RuntimeError('Network request failed after four attempts') from None\n+                self.sleep(2 ** attempt)\n+\n+    def one(self, path):\n+        with self.open(API + path) as response:\n+            return json.load(response)\n+\n+    def pages(self, path):\n+        url = API + path + ('&' if '?' in path else '?') + 'per_page=100'\n+        seen = set()\n+        result = []\n+        while url:\n+            if url in seen or urlsplit(url).netloc != 'api.github.com':\n+                raise RuntimeError('Invalid GitHub pagination link')\n+            seen.add(url)\n+            with self.open(url) as response:\n+                page = json.load(response)\n+                if not isinstance(page, list):\n+                    raise RuntimeError('GitHub returned an unexpected list response')\n+                result.extend(page)\n+                link = response.headers.get('Link', '')\n+            match = re.search(r'<([^>]+)>;\\s*rel=\"next\"', link)\n+            url = match.group(1) if match else None\n+        return result\n+\n+\n+def uploaded_urls(text):\n+    \"\"\"GitHub uploads in Markdown, HTML, bare video URLs, and reference links.\"\"\"\n+    found = set()\n+    for match in URL_RE.finditer(html.unescape(text or '')):\n+        url = match.group().rstrip('.,;:!?')\n+        # Markdown closing parentheses are not part of a bare GitHub upload URL.\n+        while url.endswith(')') and url.count(')') > url.count('('):\n+            url = url[:-1]\n+        url = url.rstrip(']')\n+        try:\n+            parsed = urlsplit(url)\n+            if not trusted_download(url):\n+                continue\n+        except ValueError:\n+            continue\n+        host = parsed.hostname or ''\n+        uuid = r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}'\n+        is_upload = ((host == 'github.com' and\n+                      (re.fullmatch(r'/user-attachments/assets/' + uuid, parsed.path) or\n+                       re.match(r'^/user-attachments/files/[0-9]+/[^/]+', parsed.path) or\n+                       re.match(r'^/[^/]+/[^/]+/files/[0-9]+/[^/]+', parsed.path) or\n+                       re.fullmatch(r'/[^/]+/[^/]+/assets/[0-9]+/' + uuid, parsed.path)))\n+                     or host in {'user-images.githubusercontent.com', 'private-user-images.githubusercontent.com', 'secured-user-images.githubusercontent.com'}\n+                     or host.startswith('github-production-user-asset-'))",
+  "path": "tools/repository_dump.py",
+  "commit_id": "f61d55b8a3cd7783cb2266e99da539cdb5418467",
+  "original_commit_id": "f61d55b8a3cd7783cb2266e99da539cdb5418467",
+  "user": {
+    "login": "Copilot",
+    "id": 175728472,
+    "node_id": "BOT_kgDOCnlnWA",
+    "avatar_url": "https://avatars.githubusercontent.com/in/946600?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/Copilot",
+    "html_url": "https://github.com/apps/copilot-pull-request-reviewer",
+    "followers_url": "https://api.github.com/users/Copilot/followers",
+    "following_url": "https://api.github.com/users/Copilot/following{/other_user}",
+    "gists_url": "https://api.github.com/users/Copilot/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/Copilot/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/Copilot/subscriptions",
+    "organizations_url": "https://api.github.com/users/Copilot/orgs",
+    "repos_url": "https://api.github.com/users/Copilot/repos",
+    "events_url": "https://api.github.com/users/Copilot/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/Copilot/received_events",
+    "type": "Bot",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "body": "Any URL whose host starts with `github-production-user-asset-` is treated as an upload, while `trusted_download` accepts any matching S3 bucket. A repository commenter can therefore make the action fetch an attacker-controlled public object instead of a GitHub upload. Only accept GitHub upload URLs initially; keep the S3 pattern for redirects from GitHub storage (or otherwise bind the redirect origin).",
+  "created_at": "2026-09-13T10:10:41Z",
+  "updated_at": "2026-09-13T10:10:42Z",
+  "html_url": "https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/69#discussion_r3999346300",
+  "pull_request_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/69",
+  "_links": {
+    "self": {
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346300"
+    },
+    "html": {
+      "href": "https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/69#discussion_r3999346300"
+    },
+    "pull_request": {
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/69"
+    }
+  },
+  "reactions": {
+    "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346300/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "start_line": 170,
+  "original_start_line": 170,
+  "start_side": "RIGHT",
+  "line": 171,
+  "original_line": 171,
+  "side": "RIGHT",
+  "author_association": "NONE",
+  "original_position": 171,
+  "position": 171,
+  "subject_type": "line"
+}

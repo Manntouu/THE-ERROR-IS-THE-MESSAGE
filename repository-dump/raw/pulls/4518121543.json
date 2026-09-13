@@ -33,10 +33,10 @@
   },
   "body": "Adds a dependency-free Python exporter and manual Actions workflow for #60. Issues, PR conversations/reviews, releases, tags, root-README text and GitHub-hosted media are preserved as JSON, readable pages and a checksummed URL-to-file manifest. The workflow commits the dump to a dedicated archive branch. Reruns reuse verified files; missing media and exhausted budgets remain explicit failures.\r\n\r\n**Hosted validation passed:** https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34750105125\r\n**Resulting archive:** https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/tree/39c82de8ca56deb8d78a7d0e944513d802f126e1/repository-dump\r\n\r\nThe successful run exported 60 issues, 6 PRs, 168 conversation comments, 4 releases/tags and 399 attachment URLs with zero failures. Its 400 part references resolve to 342 unique stored files after deduplication. Every asset's size/SHA-256 and all 342 remote Git media-blob IDs match independently verified local files. All 14 tests passed.\r\n\r\nThe archive index and issue #60 were exercised in a browser. The manual workflow controls were opened and filled at a 390px phone-sized viewport; actual dispatch was from desktop, with no physical-handset claim. See tools/REPOSITORY_ARCHIVE.md and tools/VALIDATION.md for reproduction and evidence.\r\n\r\nScope excludes deleted/inaccessible content, full edit histories, separate Discussions, wikis, projects, Actions artifacts and Git history; snapshots are non-atomic.\r\n\r\n€100 bounty claim, subject to maintainer acceptance and payment confirmation. AI-assisted implementation and validation by Codex, authorized for @Manntouu.\r\n",
   "created_at": "2026-09-13T09:43:08Z",
-  "updated_at": "2026-09-13T10:07:28Z",
+  "updated_at": "2026-09-13T10:11:17Z",
   "closed_at": null,
   "merged_at": null,
-  "merge_commit_sha": "3690503401479a84dbb15445ae75fe0dfc15bdf2",
+  "merge_commit_sha": "928b3ed16107251fa48502ad9289f162921fa552",
   "assignees": [],
   "requested_reviewers": [],
   "requested_teams": [],
@@ -47,11 +47,11 @@
   "review_comments_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/66/comments",
   "review_comment_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments{/number}",
   "comments_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/issues/66/comments",
-  "statuses_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/e6dc005764fc0f0bca2b00c11409ff7d5fde9526",
+  "statuses_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/8cba97a38abefa5a0a6ca1030dcbf476a52cabe0",
   "head": {
     "label": "Manntouu:codex/repository-archive",
     "ref": "codex/repository-archive",
-    "sha": "e6dc005764fc0f0bca2b00c11409ff7d5fde9526",
+    "sha": "8cba97a38abefa5a0a6ca1030dcbf476a52cabe0",
     "user": {
       "login": "Manntouu",
       "id": 181519195,
@@ -142,7 +142,7 @@
       "deployments_url": "https://api.github.com/repos/Manntouu/THE-ERROR-IS-THE-MESSAGE/deployments",
       "created_at": "2026-09-13T09:40:31Z",
       "updated_at": "2026-09-13T09:42:00Z",
-      "pushed_at": "2026-09-13T10:07:27Z",
+      "pushed_at": "2026-09-13T10:11:15Z",
       "git_url": "git://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE.git",
       "ssh_url": "git@github.com:Manntouu/THE-ERROR-IS-THE-MESSAGE.git",
       "clone_url": "https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE.git",
@@ -293,7 +293,7 @@
       "has_wiki": true,
       "has_pages": false,
       "has_discussions": false,
-      "forks_count": 10,
+      "forks_count": 11,
       "mirror_url": null,
       "archived": false,
       "disabled": false,
@@ -312,7 +312,7 @@
       "pull_request_creation_policy": "all",
       "topics": [],
       "visibility": "public",
-      "forks": 10,
+      "forks": 11,
       "open_issues": 69,
       "watchers": 0,
       "default_branch": "main"
@@ -341,7 +341,7 @@
       "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/66/commits"
     },
     "statuses": {
-      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/e6dc005764fc0f0bca2b00c11409ff7d5fde9526"
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/8cba97a38abefa5a0a6ca1030dcbf476a52cabe0"
     }
   },
   "author_association": "NONE",

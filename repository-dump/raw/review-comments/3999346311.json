@@ -1,0 +1,69 @@
+{
+  "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346311",
+  "pull_request_review_id": 5190389172,
+  "id": 3999346311,
+  "node_id": "PRRC_kwDOUIkZ-s7uYS6H",
+  "diff_hunk": "@@ -0,0 +1,23 @@\n+name: Test repository export tool\n+on:\n+  pull_request:\n+    paths:\n+      - 'tools/repository_dump.py'\n+      - 'tests/test_repository_dump.py'\n+      - '.github/workflows/*repository-dump.yml'\n+  push:\n+    paths:\n+      - 'tools/repository_dump.py'\n+      - 'tests/test_repository_dump.py'\n+      - '.github/workflows/*repository-dump.yml'",
+  "path": ".github/workflows/test-repository-dump.yml",
+  "commit_id": "f61d55b8a3cd7783cb2266e99da539cdb5418467",
+  "original_commit_id": "f61d55b8a3cd7783cb2266e99da539cdb5418467",
+  "user": {
+    "login": "Copilot",
+    "id": 175728472,
+    "node_id": "BOT_kgDOCnlnWA",
+    "avatar_url": "https://avatars.githubusercontent.com/in/946600?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/Copilot",
+    "html_url": "https://github.com/apps/copilot-pull-request-reviewer",
+    "followers_url": "https://api.github.com/users/Copilot/followers",
+    "following_url": "https://api.github.com/users/Copilot/following{/other_user}",
+    "gists_url": "https://api.github.com/users/Copilot/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/Copilot/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/Copilot/subscriptions",
+    "organizations_url": "https://api.github.com/users/Copilot/orgs",
+    "repos_url": "https://api.github.com/users/Copilot/repos",
+    "events_url": "https://api.github.com/users/Copilot/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/Copilot/received_events",
+    "type": "Bot",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "body": "This workflow is the matrix that runs the Python test suite on both Linux and Windows, but neither the `pull_request` nor `push` path filters includes `tools/publish_archive.py` or `tests/test_publish_archive.py`. A publisher-only change can therefore merge without running the tests that cover it; add both files to each filter.",
+  "created_at": "2026-09-13T10:10:41Z",
+  "updated_at": "2026-09-13T10:10:42Z",
+  "html_url": "https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/69#discussion_r3999346311",
+  "pull_request_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/69",
+  "_links": {
+    "self": {
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346311"
+    },
+    "html": {
+      "href": "https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/69#discussion_r3999346311"
+    },
+    "pull_request": {
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/69"
+    }
+  },
+  "reactions": {
+    "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments/3999346311/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "start_line": 3,
+  "original_start_line": 3,
+  "start_side": "RIGHT",
+  "line": 12,
+  "original_line": 12,
+  "side": "RIGHT",
+  "author_association": "NONE",
+  "original_position": 12,
+  "position": 12,
+  "subject_type": "line"
+}
