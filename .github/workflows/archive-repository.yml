@@ -1,0 +1,72 @@
+name: Archive repository
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: 'Source owner/repository; leave empty for this repository'
+        required: false
+        type: string
+permissions:
+  contents: write
+  issues: read
+  pull-requests: read
+concurrency:
+  group: repository-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out tooling
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check Python
+        run: python3 --version
+      - name: Run archive tests
+        run: python3 -m unittest discover -s tools -p test_repo_dump.py
+      - name: Prepare dedicated archive branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_tree="$RUNNER_TEMP/repository-archive-tree"
+          if git show-ref --verify --quiet refs/remotes/origin/repository-archive; then
+            git worktree add -b repository-archive "$archive_tree" origin/repository-archive
+          else
+            git worktree add -b repository-archive "$archive_tree" HEAD
+          fi
+          printf 'ARCHIVE_TREE=%s\n' "$archive_tree" >> "$GITHUB_ENV"
+      - name: Export metadata and media
+        id: dump
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REPO: ${{ inputs.source_repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_repository="${SOURCE_REPO:-$GITHUB_REPOSITORY}"
+          python3 tools/repo_dump.py \
+            --repo "$source_repository" \
+            --output "$ARCHIVE_TREE/repository-dump" \
+            --max-download-mib 2048
+      - name: Commit archive and failure report
+        if: always() && steps.dump.outcome != 'skipped'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$ARCHIVE_TREE/repository-dump/report.json"
+          git -C "$ARCHIVE_TREE" config user.name 'github-actions[bot]'
+          git -C "$ARCHIVE_TREE" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$ARCHIVE_TREE" add -- repository-dump
+          if ! git -C "$ARCHIVE_TREE" diff --cached --quiet; then
+            git -C "$ARCHIVE_TREE" commit -m 'Archive repository metadata and attachments'
+            git -C "$ARCHIVE_TREE" push origin HEAD:repository-archive
+          fi
+          printf 'Archive and report: %s/%s/tree/repository-archive/repository-dump\n' \
+            "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"
+          printf '\nA failed export is saved for diagnosis and remains a failed workflow.\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Report incomplete export
+        if: steps.dump.outcome == 'failure'
+        run: exit 1
