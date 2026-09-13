@@ -3,59 +3,62 @@
 Bounty: https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/issues/60
 PR: https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/66
 
-## Follow-up coverage check
+## Final hosted execution passed
 
-A final comparison identified the GitHub-generated release source ZIP/TAR files
-separately from uploaded release assets. Those eight generated archives were not
-in the run below. The exporter now includes both generated source archives for
-each release. The first follow-up run reported HTTP 415 for those eight new
-downloads while preserving all previous media; the API Accept negotiation is now
-corrected and specifically tested. Final hosted verification is pending. Existing attachment preservation and
-credential stripping on redirects remain covered by the tests.
-
-## Earlier hosted execution passed
-
-The manually triggered GitHub Actions run completed successfully:
-https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34750105125
-
-Its export ran from 2026-09-13 09:43:44 to 09:50:27 UTC, then committed and pushed
-the complete archive back to the fork. The tested source commit was 7195e89.
+Run: https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34751238107
+Tested source commit: 8cba97a (the later change to this record is documentation only).
 
 Archive:
-https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/tree/39c82de8ca56deb8d78a7d0e944513d802f126e1/repository-dump
+https://github.com/Manntouu/THE-ERROR-IS-THE-MESSAGE/tree/18d5693c50c71db0d214389da6a2517c65831f76/repository-dump
 
-- 60 issues, 6 pull requests, 168 conversation comments.
-- 4 releases, 4 tags, plus the root README.
-- 399 attachment URLs saved; zero failed assets.
-- 400 part references resolve to 342 unique stored media files after deduplication.
-- Logical asset size: 1,880,901,820 bytes; unique media stored: 1,529,159,214 bytes.
-- The workflow's 14 focused tests passed.
-- Every hosted attachment's size and SHA-256 matches the independently verified
-  local export. All 342 remote Git media-blob IDs also match the verified local
-  files; no new or unmatched asset URLs were present in the hosted snapshot.
+The export ran on 2026-09-13 from 10:12:50 to 10:13:10 UTC. Tests, export,
+archive commit and push all succeeded.
 
-The first local complete export finished at 09:20:29 UTC with 60 issues, 4 PRs,
-167 comments and the same media. All 400 part references were reconstructed and
-checked for part size/hash and original size/hash. Earlier references to 400 parts
-counted those manifest references, not 400 distinct files on disk.
+- 60 issues, 9 PRs, 172 conversation comments, 5 inline comments and 1 review.
+- 4 releases, 4 tags and the root README.
+- 407 downloads: 399 GitHub-uploaded attachment URLs and 8 generated release
+  source archives (a ZIP and TAR for each release); zero failures.
+- 408 part references resolve to 350 unique stored media files after deduplication.
+- Logical asset bytes: 1,959,761,565; unique stored media bytes: 1,608,018,959.
+- All 17 focused tests passed on the hosted runner.
+- All 399 previous attachment sizes/SHA-256 hashes remained identical. All 342
+  previously verified remote Git media blobs still match their local files.
+- All 8 new source archives were independently downloaded from the published
+  archive and matched their sizes and SHA-256 hashes. Each ZIP passed CRC checks;
+  each gzip/TAR was decompressed and parsed without extracting or executing files.
+- Issue #60's 53 uploaded attachments were checked against their source references.
 
-The generated index and issue #60 page were exercised in a real browser. The
-manual workflow form was opened and filled at a 390-pixel phone-sized viewport,
-with its Run workflow button visibly usable. The actual dispatch used the desktop
-browser; no physical handset test was performed.
+The generated index and issue #60 were exercised in a real browser. The manual
+workflow controls were opened and filled at a 390-pixel phone-sized viewport and
+the Run workflow button was visibly usable. Actual dispatch used the desktop
+browser; no physical handset test was performed. Final inline-comment and review
+coverage is now exercised by real data as well as fixtures.
 
-## Scope and failure behavior
+## Earlier checks and corrected gaps
 
-The public snapshot contained no review summaries or inline review comments;
-those paths are covered by fixtures. An initial 1 GiB download budget produced an
-explicit incomplete report; resuming reused verified media and completed under
-the 2 GiB budget. Invalid placeholder URLs in code examples are distinguished
-from canonical uploaded attachments. Remote text remains escaped and inert.
+The initial local export independently verified every referenced attachment and
+part hash. Its first 1 GiB budget produced an explicit incomplete report; resuming
+reused verified media and completed under the 2 GiB budget.
 
-Deleted/inaccessible content and complete edit histories are unavailable from
-GitHub. Separate Discussions, projects, wikis, Actions artifacts and Git history
-are outside this exporter. The snapshot is not atomic.
+Hosted run 34750105125 preserved 399 uploaded URLs successfully, but a final
+coverage comparison identified eight GitHub-generated release source archives
+outside the release.assets array. The first follow-up (34751069097) correctly
+reported HTTP 415 for those new downloads and kept the previous media intact.
+The source-archive endpoints require GitHub JSON media negotiation before a
+redirect, while uploaded release assets require octet-stream. That distinction
+and credential stripping on codeload redirects now have focused tests; two real
+API probes and the final full hosted run passed.
 
-Initial GitHub website submission errors were resolved using fresh normal pages.
-Implementation and validation were AI-assisted by Codex, authorized for Manntouu.
-No bounty acceptance, reward or payment is claimed.
+The earlier 400-part count represented manifest references, not 400 distinct
+files. The final counts above distinguish references and unique files.
+
+## Scope
+
+Deleted/inaccessible content and full edit histories are unavailable from GitHub.
+Separate Discussions, projects, wikis, Actions artifacts and Git history are
+outside this exporter; generated release source archives are included. Snapshots
+are non-atomic. Remote text is escaped and inert, and inaccessible assets make a
+run incomplete rather than silently disappearing.
+
+Implementation and validation were AI-assisted by Codex for Manntouu. No bounty
+acceptance, reward or payment is claimed.
