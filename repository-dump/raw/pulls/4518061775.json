@@ -31,12 +31,12 @@
     "user_view_type": "public",
     "site_admin": false
   },
-  "body": "Related to #60. A normal git clone does not preserve issue/PR conversations or uploaded media. This adds a dependency-free Python exporter that saves the public repository's issues, PRs, full comments/reviews, releases, tag metadata, release assets, and GitHub-uploaded files alongside readable Markdown, raw JSON, source mappings and SHA-256 checksums.\n\nLarge files are preserved in ordered 48 MiB chunks with a restoration command that verifies each part and the complete original. Missing, inaccessible, oversized or truncated downloads produce a nonzero exit and an explicitly incomplete manifest. Reruns verify cached files before reusing them.\n\nValidation so far: 12 local regression tests pass, including pagination, reply context, attachment formats, credential handling on redirects, incomplete downloads, reruns, corrupt caches, and lossless large-file reconstruction. A full run against this repository is in progress. The initial live run exposed GitHub's legacy attachment S3 host and malformed URLs in discussion text; both are now handled. **The complete target-repository demonstration is not yet claimed; this PR remains draft until that verification finishes.**\n\nThe phone-friendly manual Actions workflow is supplied as `docs/repository-archive.workflow.yml`, with installation and operation instructions in `docs/REPOSITORY_ARCHIVE.md`. GitHub rejected registering the workflow with my current credential because it lacks the `workflow` permission. The template therefore needs a one-time owner copy to `.github/workflows/repository-archive.yml`; no hosted Actions run is claimed. It writes the archive to a dedicated branch and does not replace the source branch.\n\nThe documentation explicitly distinguishes this sequential public API snapshot from an atomic backup, and lists unavailable/deleted data, native GitHub Discussions and other out-of-scope resources. No external paid service or new credentials are required by the tool itself.\n",
+  "body": "Related to #60. A normal git clone does not preserve issue/PR conversations or uploaded media. This adds a dependency-free Python exporter that saves the public repository's issues, PRs, full comments/reviews, releases, tag metadata, release assets, and GitHub-uploaded files alongside readable Markdown, raw JSON, source mappings and SHA-256 checksums.\n\nLarge files are preserved in ordered 48 MiB chunks with a restoration command that verifies each part and the complete original. Missing, inaccessible, oversized or truncated downloads produce a nonzero exit and an explicitly incomplete manifest. Reruns verify cached files before reusing them.\n\nValidation so far: 14 local regression tests pass, including pagination, reply context, attachment formats, credential handling on redirects, incomplete downloads, reruns, corrupt caches, lossless large-file reconstruction, and exact text-file preservation through a real Git round trip with line-ending conversion enabled. A full run against this repository is in progress. The initial live run exposed GitHub's legacy attachment S3 host and malformed URLs in discussion text; both are now handled. Media discovery also excludes fixture URLs inside code diffs while preserving the diffs themselves. **The complete target-repository demonstration is not yet claimed; this PR remains draft until that verification finishes.**\n\nThe phone-friendly manual Actions workflow is supplied as `docs/repository-archive.workflow.yml`, with installation and operation instructions in `docs/REPOSITORY_ARCHIVE.md`. GitHub rejected registering the workflow with my current credential because it lacks the `workflow` permission. The template therefore needs a one-time owner copy to `.github/workflows/repository-archive.yml`; no hosted Actions run is claimed. It writes the archive to a dedicated branch and does not replace the source branch.\n\nThe documentation explicitly distinguishes this sequential public API snapshot from an atomic backup, and lists unavailable/deleted data, native GitHub Discussions and other out-of-scope resources. No external paid service or new credentials are required by the tool itself.\n",
   "created_at": "2026-09-13T09:24:30Z",
-  "updated_at": "2026-09-13T09:39:12Z",
+  "updated_at": "2026-09-13T10:08:15Z",
   "closed_at": null,
   "merged_at": null,
-  "merge_commit_sha": "37c719e9c63802fd5a0eec6cdf0d2f563fe287cd",
+  "merge_commit_sha": "086c8845e28591cd03556549cb339f656c4cae4f",
   "assignees": [],
   "requested_reviewers": [],
   "requested_teams": [],
@@ -47,11 +47,11 @@
   "review_comments_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/65/comments",
   "review_comment_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/comments{/number}",
   "comments_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/issues/65/comments",
-  "statuses_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/f8b5c39f67d4dafd4acbebe4bd33875041f459a0",
+  "statuses_url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/e513bed3ff2094544292ec3fd17159b22dc141d0",
   "head": {
     "label": "nexicturbo:feature/repository-archive",
     "ref": "feature/repository-archive",
-    "sha": "f8b5c39f67d4dafd4acbebe4bd33875041f459a0",
+    "sha": "e513bed3ff2094544292ec3fd17159b22dc141d0",
     "user": {
       "login": "nexicturbo",
       "id": 202719529,
@@ -141,8 +141,8 @@
       "releases_url": "https://api.github.com/repos/nexicturbo/THE-ERROR-IS-THE-MESSAGE/releases{/id}",
       "deployments_url": "https://api.github.com/repos/nexicturbo/THE-ERROR-IS-THE-MESSAGE/deployments",
       "created_at": "2026-09-13T09:01:03Z",
-      "updated_at": "2026-09-13T09:39:17Z",
-      "pushed_at": "2026-09-13T09:39:13Z",
+      "updated_at": "2026-09-13T10:08:20Z",
+      "pushed_at": "2026-09-13T10:08:45Z",
       "git_url": "git://github.com/nexicturbo/THE-ERROR-IS-THE-MESSAGE.git",
       "ssh_url": "git@github.com:nexicturbo/THE-ERROR-IS-THE-MESSAGE.git",
       "clone_url": "https://github.com/nexicturbo/THE-ERROR-IS-THE-MESSAGE.git",
@@ -293,11 +293,11 @@
       "has_wiki": true,
       "has_pages": false,
       "has_discussions": false,
-      "forks_count": 9,
+      "forks_count": 10,
       "mirror_url": null,
       "archived": false,
       "disabled": false,
-      "open_issues_count": 66,
+      "open_issues_count": 69,
       "license": {
         "key": "mit",
         "name": "MIT License",
@@ -312,8 +312,8 @@
       "pull_request_creation_policy": "all",
       "topics": [],
       "visibility": "public",
-      "forks": 9,
-      "open_issues": 66,
+      "forks": 10,
+      "open_issues": 69,
       "watchers": 0,
       "default_branch": "main"
     }
@@ -341,7 +341,7 @@
       "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/pulls/65/commits"
     },
     "statuses": {
-      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/f8b5c39f67d4dafd4acbebe4bd33875041f459a0"
+      "href": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/statuses/e513bed3ff2094544292ec3fd17159b22dc141d0"
     }
   },
   "author_association": "NONE",

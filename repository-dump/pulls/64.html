@@ -17,7 +17,7 @@ Output lands back in the repo on a configurable branch (default `repo-dump`): on
 
 - Unit tests: `python3 -m unittest discover -s tests -v` - 7/7 pass (attachment extraction, dedup, issue/PR separation, markdown rewriting, manifest, failure-is-reported-not-fatal)
 - Live read-only run against `attogram/attogram`: 12 issues, 3 PRs, 15 releases exported, 24 API requests, 0 failures
-- Full acceptance run against this repository (test 1: consume this issue - all 60 issues, comments, embedded videos/images/music) is executing here: https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34749460363 - result committed to the fork&#x27;s `repo-dump` branch when done
+- Full acceptance run against this repository (test 1: consume this issue) COMPLETED: https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34749758922 - all 60 issues, 5 PRs, 4 releases exported; 393 attachments downloaded into `assets/` with sha256 checksums, **0 failed downloads**; output committed to the fork&#x27;s [`repo-dump` branch](https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE/tree/repo-dump)
 
 ## Literal readings of the spec worth noting
 
@@ -26,4 +26,15 @@ Output lands back in the repo on a configurable branch (default `repo-dump`): on
 - Dumping a different repo from the fork works for public repos with the automatic `GITHUB_TOKEN`; private cross-repo targets would need a PAT secret.
 
 Files: `tools/repo_dump.py`, `tests/test_repo_dump.py`, `.github/workflows/repo-dump.yml`, `REPO-DUMP.md` (docs kept in a separate file so the repo&#x27;s own README is untouched).
+</pre><h2>Comment by navaneethvenu</h2><pre>Acceptance run finished (test 1 - this repository consumed by the tool):
+
+**Run:** https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34749758922 (success)
+
+- 60 issues, 5 pull requests, 4 releases - full text, complete comment threads, PR reviews and inline review comments
+- 393 attachments/artifacts downloaded into `assets/`, each with sha256 + byte size in `manifest.json`; **0 failed downloads**
+- Dumped Markdown rewrites attachment links to local paths, so the export is self-contained
+- Output: https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE/tree/repo-dump (start at `index.md`)
+- Unit tests: 8/8 via `python3 -m unittest discover -s tests -v`
+
+Triggered by `workflow_dispatch` from the Actions tab - one tap from a phone browser, no local environment.
 </pre></body></html>
