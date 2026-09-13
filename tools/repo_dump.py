@@ -58,8 +58,12 @@ class GitHub:
 
     def open(self, url, binary=False):
         safe_url(url)
+        source_archive = urlsplit(url).hostname == "api.github.com" and bool(
+            re.match(r"^/repos/[^/]+/[^/]+/(?:zipball|tarball)/", urlsplit(url).path))
+        # Source archive endpoints negotiate JSON before redirecting to codeload.
+        # Uploaded release-asset endpoints instead require octet-stream.
         headers = {"User-Agent": "repository-dump-tool",
-                   "Accept": "application/octet-stream" if binary else "application/vnd.github+json",
+                   "Accept": "application/octet-stream" if binary and not source_archive else "application/vnd.github+json",
                    "X-GitHub-Api-Version": "2022-11-28"}
         if self.token and urlsplit(url).hostname == "api.github.com":
             headers["Authorization"] = "Bearer " + self.token

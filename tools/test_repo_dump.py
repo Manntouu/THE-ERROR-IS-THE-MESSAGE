@@ -259,5 +259,24 @@ class ArchiveTests(unittest.TestCase):
 
 
 
+    def test_source_archive_and_uploaded_asset_use_their_required_media_types(self):
+        client = dump.GitHub()
+        seen = {}
+        def opening(request, timeout):
+            seen[request.full_url] = request.get_header("Accept")
+            return Response(b"content")
+        client.opener.open = opening
+        urls = ["https://api.github.com/repos/owner/repo/zipball/v1",
+                "https://api.github.com/repos/owner/repo/tarball/v1",
+                "https://api.github.com/repos/owner/repo/releases/assets/4"]
+        for url in urls:
+            with client.open(url, binary=True) as response:
+                self.assertEqual(response.read(), b"content")
+        self.assertEqual(seen[urls[0]], "application/vnd.github+json")
+        self.assertEqual(seen[urls[1]], "application/vnd.github+json")
+        self.assertEqual(seen[urls[2]], "application/octet-stream")
+
+
+
 if __name__ == "__main__":
     unittest.main()

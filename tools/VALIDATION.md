@@ -8,7 +8,9 @@ PR: https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE/pull/66
 A final comparison identified the GitHub-generated release source ZIP/TAR files
 separately from uploaded release assets. Those eight generated archives were not
 in the run below. The exporter now includes both generated source archives for
-each release; its new hosted run is pending. Existing attachment preservation and
+each release. The first follow-up run reported HTTP 415 for those eight new
+downloads while preserving all previous media; the API Accept negotiation is now
+corrected and specifically tested. Final hosted verification is pending. Existing attachment preservation and
 credential stripping on redirects remain covered by the tests.
 
 ## Earlier hosted execution passed
