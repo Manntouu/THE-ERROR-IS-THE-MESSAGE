@@ -1,10 +1,33 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Archive repository conversations and media with verifiable recovery</title><style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;line-height:1.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}li{margin:.4rem 0}a{overflow-wrap:anywhere} .failed{color:#a00}</style><body><h1>Archive repository conversations and media with verifiable recovery</h1><p><a href="../index.html">Archive index</a></p><h2>Description</h2><pre>Related to #60. A normal git clone does not preserve issue/PR conversations or uploaded media. This adds a dependency-free Python exporter that saves the public repository&#x27;s issues, PRs, full comments/reviews, releases, tag metadata, release assets, and GitHub-uploaded files alongside readable Markdown, raw JSON, source mappings and SHA-256 checksums.
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Archive repository conversations and media with verifiable recovery</title><style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;line-height:1.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}li{margin:.4rem 0}a{overflow-wrap:anywhere} .failed{color:#a00}</style><body><h1>Archive repository conversations and media with verifiable recovery</h1><p><a href="../index.html">Archive index</a></p><h2>Description</h2><pre>For #60: a normal git clone does not preserve issue/PR conversations or uploaded media. This adds a Python standard-library exporter and a recovery utility, with raw JSON, readable Markdown, original files, source mappings and SHA-256 checksums.
 
-Large files are preserved in ordered 48 MiB chunks with a restoration command that verifies each part and the complete original. Missing, inaccessible, oversized or truncated downloads produce a nonzero exit and an explicitly incomplete manifest. Reruns verify cached files before reusing them.
+## Verified target-repository demonstration
 
-Validation so far: 14 local regression tests pass, including pagination, reply context, attachment formats, credential handling on redirects, incomplete downloads, reruns, corrupt caches, lossless large-file reconstruction, and exact text-file preservation through a real Git round trip with line-ending conversion enabled. A full run against this repository is in progress. The initial live run exposed GitHub&#x27;s legacy attachment S3 host and malformed URLs in discussion text; both are now handled. Media discovery also excludes fixture URLs inside code diffs while preserving the diffs themselves. **The complete target-repository demonstration is not yet claimed; this PR remains draft until that verification finishes.**
+[Immutable archive](https://github.com/nexicturbo/THE-ERROR-IS-THE-MESSAGE/tree/1f659cfcb1d581e967f7e7298afbb3dd0617ea68/archive) · [Issue 60 with local attachment links](https://github.com/nexicturbo/THE-ERROR-IS-THE-MESSAGE/tree/1f659cfcb1d581e967f7e7298afbb3dd0617ea68/archive/issues/60.md) · [Manifest and checksums](https://github.com/nexicturbo/THE-ERROR-IS-THE-MESSAGE/tree/1f659cfcb1d581e967f7e7298afbb3dd0617ea68/archive/manifest.json)
 
-The phone-friendly manual Actions workflow is supplied as `docs/repository-archive.workflow.yml`, with installation and operation instructions in `docs/REPOSITORY_ARCHIVE.md`. GitHub rejected registering the workflow with my current credential because it lacks the `workflow` permission. The template therefore needs a one-time owner copy to `.github/workflows/repository-archive.yml`; no hosted Actions run is claimed. It writes the archive to a dedicated branch and does not replace the source branch.
+The snapshot ran from 2026-09-13T10:31:16.990195+00:00 to 2026-09-13T10:32:38.055602+00:00 and contains:
 
-The documentation explicitly distinguishes this sequential public API snapshot from an atomic backup, and lists unavailable/deleted data, native GitHub Discussions and other out-of-scope resources. No external paid service or new credentials are required by the tool itself.
+- 60 issues, 10 PRs and 179 issue/general PR comments.
+- 4 releases, 4 tags and all 8 generated release ZIP/TAR source packages, pinned to the fetched tag commits.
+- The main README, its original bytes and API metadata, plus its linked uploads.
+- **415 saved files / 1,974,836,504 bytes, zero errors**, including 61 attachments linked from issue 60 and its comments.
+
+All 415 files were reconstructed locally and checked against their original SHA-256 hashes. After pushing, I independently verified every asset and ordered part directly from the committed Git objects and confirmed that this exact commit is the public archive branch tip. The original README&#x27;s Git blob also matches GitHub&#x27;s source blob. This is a sequential snapshot; later activity belongs to a subsequent run.
+
+## Implementation and validation
+
+18 regression tests pass. Coverage includes pagination; complete comments, reviews and replies; uploaded release assets; README preservation; pinned release packages; credential removal on CDN redirects; failed/truncated downloads; corrupt or replaced caches; and byte-for-byte restoration through a real Git round trip with line-ending conversion enabled. The live snapshot preserves 1 PR review records and 5 inline review comments. It contains 0 uploaded release binaries; fixtures separately exercise that API path.
+
+2 large files are stored as ordered 48 MiB parts below GitHub&#x27;s ordinary file-size limit. The included recovery command checks each part and the full original. Missing or oversized files cause a nonzero exit and an explicitly incomplete manifest. Reruns hash cached data before reuse and refresh changed release assets or tag revisions. One explicit all-x illustrative URL is retained in the source and recorded under `ignored_urls`.
+
+```sh
+python3 -m unittest discover -s tools -v
+python3 tools/repo_dump.py attogram/THE-ERROR-IS-THE-MESSAGE --output repository-archive
+python3 tools/restore_archive.py repository-archive restored-files
+```
+
+## Remaining Actions installation step
+
+The manual, phone-friendly workflow is supplied as `docs/repository-archive.workflow.yml`. **It is not registered or verified by a hosted Actions run:** my current GitHub credential lacks the `workflow` permission. An owner must copy it once to `.github/workflows/repository-archive.yml` on the default branch; the documented Run workflow button then becomes available. YAML parsing and shell syntax checks pass, but they do not replace a hosted test. It writes to a dedicated archive branch, preserves the source branch, and uses the existing repository-scoped GITHUB_TOKEN.
+
+The README documents public-data limitations, non-atomic timing, and exclusions such as native GitHub Discussions, wikis, projects, Actions logs/artifacts and full git history. No paid storage or external service is configured.
 </pre></body></html>

@@ -32,7 +32,7 @@
   "pin": null,
   "reactions": {
     "url": "https://api.github.com/repos/attogram/THE-ERROR-IS-THE-MESSAGE/issues/comments/5652552507/reactions",
-    "total_count": 0,
+    "total_count": 1,
     "+1": 0,
     "-1": 0,
     "laugh": 0,
@@ -40,7 +40,7 @@
     "confused": 0,
     "heart": 0,
     "rocket": 0,
-    "eyes": 0
+    "eyes": 1
   },
   "performed_via_github_app": null,
   "minimized": null

@@ -148,7 +148,7 @@
       "clone_url": "https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE.git",
       "svn_url": "https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE",
       "homepage": null,
-      "size": 38591,
+      "size": 1447722,
       "stargazers_count": 0,
       "watchers_count": 0,
       "language": "Python",
@@ -293,11 +293,11 @@
       "has_wiki": true,
       "has_pages": false,
       "has_discussions": false,
-      "forks_count": 11,
+      "forks_count": 12,
       "mirror_url": null,
       "archived": false,
       "disabled": false,
-      "open_issues_count": 69,
+      "open_issues_count": 70,
       "license": {
         "key": "mit",
         "name": "MIT License",
@@ -312,8 +312,8 @@
       "pull_request_creation_policy": "all",
       "topics": [],
       "visibility": "public",
-      "forks": 11,
-      "open_issues": 69,
+      "forks": 12,
+      "open_issues": 70,
       "watchers": 0,
       "default_branch": "main"
     }
