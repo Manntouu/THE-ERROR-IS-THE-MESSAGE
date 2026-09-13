@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Repo dump tool: mobile-triggered Actions workflow + stdlib Python exporter (#60)</title><style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;line-height:1.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}li{margin:.4rem 0}a{overflow-wrap:anywhere} .failed{color:#a00}</style><body><h1>Repo dump tool: mobile-triggered Actions workflow + stdlib Python exporter (#60)</h1><p><a href="../index.html">Archive index</a></p><h2>Description</h2><pre>Implements the repo dump tool from #60.
+
+## What it does
+
+A dependency-free Python 3 exporter (`tools/repo_dump.py`, standard library only) plus a `workflow_dispatch` GitHub Actions workflow, so the whole dump is triggered from a phone: Actions tab -&gt; repo-dump -&gt; Run workflow. No laptop, no local setup, one green button for any team member.
+
+It exports, for open **and** closed items (`state=all`):
+
+- **Issues**: full text, labels, assignees, milestone, reactions, complete comment threads
+- **Pull requests**: full text, issue comments, **reviews**, and **inline review comments** (path + line), head/base refs, merge state
+- **Releases**: notes, tags, draft/prerelease flags, and the actual **artifact binaries**
+- **Attachments**: every `user-attachments` / `user-images` file inside issue/PR/review/release bodies is downloaded into `assets/`, sha256 recorded, and links in the dumped Markdown are rewritten to the local paths so the dump is self-contained
+
+Output lands back in the repo on a configurable branch (default `repo-dump`): one Markdown + one JSON per item, `index.md` summary, and a `manifest.json` with counts, per-asset checksums/sizes and an explicit `failures` list - a failed download is reported, never silently treated as a complete backup.
+
+## Test evidence
+
+- Unit tests: `python3 -m unittest discover -s tests -v` - 7/7 pass (attachment extraction, dedup, issue/PR separation, markdown rewriting, manifest, failure-is-reported-not-fatal)
+- Live read-only run against `attogram/attogram`: 12 issues, 3 PRs, 15 releases exported, 24 API requests, 0 failures
+- Full acceptance run against this repository (test 1: consume this issue - all 60 issues, comments, embedded videos/images/music) is executing here: https://github.com/navaneethvenu/THE-ERROR-IS-THE-MESSAGE/actions/runs/34749460363 - result committed to the fork&#x27;s `repo-dump` branch when done
+
+## Literal readings of the spec worth noting
+
+- &quot;Dumps ... back into the repository&quot; = committed to a branch of the repo, not pushed elsewhere. Default branch `repo-dump` keeps `main` clean; configurable via workflow input.
+- &quot;Executable from a mobile phone&quot; = GitHub mobile web Actions UI (`workflow_dispatch`); also runnable from any shell with `GITHUB_TOKEN` set.
+- Dumping a different repo from the fork works for public repos with the automatic `GITHUB_TOKEN`; private cross-repo targets would need a PAT secret.
+
+Files: `tools/repo_dump.py`, `tests/test_repo_dump.py`, `.github/workflows/repo-dump.yml`, `REPO-DUMP.md` (docs kept in a separate file so the repo&#x27;s own README is untouched).
+</pre></body></html>

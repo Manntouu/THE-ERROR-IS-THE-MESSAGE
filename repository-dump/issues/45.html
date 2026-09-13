@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>The Index v43.0.7</title><style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;line-height:1.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}li{margin:.4rem 0}a{overflow-wrap:anywhere} .failed{color:#a00}</style><body><h1>The Index v43.0.7</h1><p><a href="../index.html">Archive index</a></p><h2>Description</h2><pre>That is a critical architectural pivot—and mathematically/structurally, it is completely correct.
+Tracking an entire ecosystem of repos, DOIs, and petitions via a standard GitHub repository creates a single point of failure and subjects your index to status lifecycles, account locks, or platform deprecation. Moving the Attogram Master Index to Zenodo fixes this permanently.
+Why the Zenodo Index Architecture Works Better
+ * True Permanence &amp; Immutability: A Zenodo record generates a static, citable DOI (e.g., 10.5281/zenodo.XXXXX). Unlike a GitHub repository where commits can be force-pushed, deleted, or altered, a Zenodo record acts as an immutable snapshot.
+ * Versioned Lineage: Zenodo natively supports versioning. When you update the index (e.g., adding attogram.020 or updating board filings), Zenodo issues a new concept DOI while maintaining the master link that points to the latest version.
+ * Open API &amp; Machine-Readable Indexing: By storing the index as a structured JSON/JSON-LD file on Zenodo, tools like your zenodo-audit.sh script (Issue #28) can fetch, checksum, and verify the entire index deterministically without relying on GitHub&#x27;s API limits.
+Zenodo Master Index Structure (attogram-index.json)
+Instead of a markdown README in a repo, the source of truth becomes a machine-readable payload deposited directly on Zenodo:
+{
+  &quot;$schema&quot;: &quot;https://attogram.foundation/schemas/index.v1.json&quot;,
+  &quot;entity&quot;: &quot;Stichting Attogram&quot;,
+  &quot;genesis_doi&quot;: &quot;10.5281/zenodo.0000000&quot;,
+  &quot;repository_archive&quot;: &quot;https://github.com/attogram/THE-ERROR-IS-THE-MESSAGE&quot;,
+  &quot;petitions&quot;: [
+    {
+      &quot;id&quot;: &quot;attogram.000&quot;,
+      &quot;title&quot;: &quot;Establishment of Stichting Attogram&quot;,
+      &quot;type&quot;: &quot;Genesis / Governance&quot;,
+      &quot;status&quot;: &quot;active_continuous&quot;
+    },
+    {
+      &quot;id&quot;: &quot;attogram.019&quot;,
+      &quot;title&quot;: &quot;The Klingon Journal of Battle&quot;,
+      &quot;type&quot;: &quot;Academic Publishing&quot;,
+      &quot;status&quot;: &quot;active_continuous&quot;
+    },
+    {
+      &quot;id&quot;: &quot;attogram.020&quot;,
+      &quot;title&quot;: &quot;Canal Waterfowl Welfare Protocol&quot;,
+      &quot;type&quot;: &quot;Urban Ecology&quot;,
+      &quot;status&quot;: &quot;active_continuous&quot;
+    }
+  ]
+}
+
+The New Architecture
+[ Local / Park Workspace ]
+          │
+          ▼
+┌─────────────────────────┐
+│   GitHub Issues &amp; Code  │  &lt;─── (Ephemeral Workspace &amp; Public Kibitzing)
+└────────────┬────────────┘
+             │
+             ▼  (Automated Release / Snapshot)
+┌─────────────────────────┐
+│  Zenodo Master Index    │  &lt;─── (Immutable Source of Truth &amp; DOI Anchor)
+│  (10.5281/zenodo.XXXX) │
+└─────────────────────────┘
+
+GitHub remains the dynamic, messy workspace where &quot;kibitzing&quot; happens, while Zenodo holds the canonical Master Index that ties all repos, petitions, and legal artifacts together forever.
+</pre></body></html>

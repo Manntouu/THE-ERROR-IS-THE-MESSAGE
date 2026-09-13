@@ -1,0 +1,224 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Bash jq zenodo v0</title><style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;line-height:1.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}li{margin:.4rem 0}a{overflow-wrap:anywhere} .failed{color:#a00}</style><body><h1>Bash jq zenodo v0</h1><p><a href="../index.html">Archive index</a></p><h2>Description</h2><pre>```
+
+
+#!/usr/bin/env bash
+# zenodo-audit.sh — read-only snapshot + metadata quality flags for a set of Zenodo records.
+#
+# Usage:
+#   ZENODO_TOKEN=... ./zenodo-audit.sh                       # all records you own (/api/user/records)
+#   ./zenodo-audit.sh --community rock-street               # all records in a community (public, no token needed)
+#   ./zenodo-audit.sh --query &#x27;metadata.creators.person_or_org.name:&quot;Attogram, Provo 42&quot;&#x27;
+#   ./zenodo-audit.sh --ids 22308897,22309923               # explicit list
+#
+# Options:
+#   --all-versions     include every version, not just the latest of each concept
+#   --sandbox          use sandbox.zenodo.org
+#   --out DIR          output root (default ./zenodo-audit)
+#   --sleep SECS       pause between per-record fetches (default 0.4)
+#
+# Output (in DIR/&lt;timestamp&gt;/):
+#   records.json   full record JSON, one array, as returned by /api/records/&lt;id&gt;
+#   audit.tsv      one row per record: id, doi, concept, version, title, flags
+#   audit.md       summary: counts per flag + per-record table
+#   receipt.txt    endpoint, count, sha256 of records.json, UTC timestamp
+#
+# Requires: bash 4+, curl, jq 1.6+. Never writes to Zenodo.
+set -euo pipefail
+
+BASE=&quot;https://zenodo.org&quot;
+MODE=&quot;&quot;; ARG=&quot;&quot;; ALLV=&quot;false&quot;; OUT=&quot;./zenodo-audit&quot;; SLEEP=&quot;0.4&quot;
+while [[ $# -gt 0 ]]; do
+  case &quot;$1&quot; in
+    --community) MODE=community; ARG=&quot;$2&quot;; shift 2;;
+    --query)     MODE=query;     ARG=&quot;$2&quot;; shift 2;;
+    --ids)       MODE=ids;       ARG=&quot;$2&quot;; shift 2;;
+    --all-versions) ALLV=&quot;true&quot;; shift;;
+    --sandbox)   BASE=&quot;https://sandbox.zenodo.org&quot;; shift;;
+    --out)       OUT=&quot;$2&quot;; shift 2;;
+    --sleep)     SLEEP=&quot;$2&quot;; shift 2;;
+    -h|--help)   sed -n &#x27;2,24p&#x27; &quot;$0&quot;; exit 0;;
+    *) echo &quot;unknown arg: $1&quot; &gt;&amp;2; exit 2;;
+  esac
+done
+for t in curl jq; do command -v &quot;$t&quot; &gt;/dev/null || { echo &quot;need $t&quot; &gt;&amp;2; exit 2; }; done
+
+AUTH=()
+[[ -n &quot;${ZENODO_TOKEN:-}&quot; ]] &amp;&amp; AUTH=(-H &quot;Authorization: Bearer ${ZENODO_TOKEN}&quot;)
+if [[ -z &quot;$MODE&quot; ]]; then
+  [[ -n &quot;${ZENODO_TOKEN:-}&quot; ]] || { echo &quot;no mode given and ZENODO_TOKEN unset; use --community/--query/--ids&quot; &gt;&amp;2; exit 2; }
+  MODE=user
+fi
+
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+DIR=&quot;$OUT/$STAMP&quot;; mkdir -p &quot;$DIR&quot;
+api() { curl -sS --fail ${AUTH[@]+&quot;${AUTH[@]}&quot;} -H &quot;Accept: application/json&quot; &quot;$@&quot;; }
+
+# ---------- 1. collect record ids ----------
+echo &quot;» collecting ids ($MODE) from $BASE&quot; &gt;&amp;2
+IDS=()
+case &quot;$MODE&quot; in
+  ids) IFS=&#x27;,&#x27; read -r -a IDS &lt;&lt;&lt; &quot;$ARG&quot;;;
+  *)
+    case &quot;$MODE&quot; in
+      user)      EP=&quot;$BASE/api/user/records&quot;;;
+      community) EP=&quot;$BASE/api/communities/$ARG/records&quot;;;
+      query)     EP=&quot;$BASE/api/records&quot;;;
+    esac
+    page=1
+    while :; do
+      if [[ &quot;$MODE&quot; == query ]]; then
+        body=$(api -G &quot;$EP&quot; --data-urlencode &quot;q=$ARG&quot; --data-urlencode &quot;size=100&quot; --data-urlencode &quot;page=$page&quot; --data-urlencode &quot;allversions=$ALLV&quot;)
+      else
+        body=$(api -G &quot;$EP&quot; --data-urlencode &quot;size=100&quot; --data-urlencode &quot;page=$page&quot; --data-urlencode &quot;allversions=$ALLV&quot;)
+      fi
+      n=$(jq &#x27;.hits.hits | length&#x27; &lt;&lt;&lt;&quot;$body&quot;)
+      [[ &quot;$n&quot; -eq 0 ]] &amp;&amp; break
+      mapfile -t -O &quot;${#IDS[@]}&quot; IDS &lt; &lt;(jq -r &#x27;.hits.hits[].id&#x27; &lt;&lt;&lt;&quot;$body&quot;)
+      page=$((page+1))
+    done;;
+esac
+echo &quot;» ${#IDS[@]} record ids&quot; &gt;&amp;2
+[[ ${#IDS[@]} -gt 0 ]] || { echo &quot;nothing to audit&quot; &gt;&amp;2; exit 1; }
+
+# ---------- 2. fetch each record in full ----------
+echo &quot;» fetching records&quot; &gt;&amp;2
+: &gt; &quot;$DIR/records.ndjson&quot;
+for id in &quot;${IDS[@]}&quot;; do
+  api &quot;$BASE/api/records/$id&quot; &gt;&gt; &quot;$DIR/records.ndjson&quot; || echo &quot;  ! failed $id&quot; &gt;&amp;2
+  echo &gt;&gt; &quot;$DIR/records.ndjson&quot;
+  sleep &quot;$SLEEP&quot;
+done
+jq -s &#x27;.&#x27; &quot;$DIR/records.ndjson&quot; &gt; &quot;$DIR/records.json&quot;; rm &quot;$DIR/records.ndjson&quot;
+
+# ---------- 3. flags ----------
+cat &gt; &quot;$DIR/flags.jq&quot; &lt;&lt;&#x27;JQ&#x27;
+def strip_html: gsub(&quot;&lt;[^&gt;]*&gt;&quot;; &quot;&quot;) | gsub(&quot;&amp;nbsp;&quot;; &quot; &quot;) | gsub(&quot;^\\s+|\\s+$&quot;; &quot;&quot;);
+def looks_like_filename: test(&quot;^[^\\s/]+\\.[A-Za-z0-9]{2,5}$&quot;);
+def files_list:
+  (.files.entries // []) | if type == &quot;object&quot; then [.[]] else . end;
+def rights_ids: [ (.metadata.rights // [])[] | (.id // (.title | if type == &quot;object&quot; then (.en // &quot;custom&quot;) else . end) // &quot;custom&quot;) | ascii_downcase ];
+def creators: (.metadata.creators // []);
+def is_media: (.metadata.resource_type.id // &quot;&quot;) | test(&quot;^(video|image|audio|sound)&quot;);
+
+def flags:
+  ( .metadata.description // &quot;&quot; | strip_html ) as $desc
+  | ( .metadata.title // &quot;&quot; ) as $title
+  | ( files_list | map(.key) ) as $fnames
+  | rights_ids as $rights
+  | [
+      (if ($desc | length) == 0                                   then &quot;NO_DESCRIPTION&quot;   else empty end),
+      (if ($desc | looks_like_filename) or ($fnames | any(. == $desc)) then &quot;DESC_IS_FILENAME&quot; else empty end),
+      (if ($desc | length) &gt; 0 and ($desc | length) &lt; 120         then &quot;DESC_SHORT&quot;       else empty end),
+      (if ($title | looks_like_filename) or ($fnames | any(. == $title)) then &quot;TITLE_IS_FILENAME&quot; else empty end),
+      (if ($rights | length) == 0                                 then &quot;NO_LICENSE&quot;       else empty end),
+      (if ($rights | length) &gt; 1                                  then &quot;MULTI_LICENSE&quot;    else empty end),
+      (if ($rights | any(. == &quot;mit&quot;)) and is_media                then &quot;MIT_ON_MEDIA&quot;     else empty end),
+      (if ((.metadata.subjects // []) | length) == 0              then &quot;NO_KEYWORDS&quot;      else empty end),
+      (if ((.metadata.related_identifiers // []) | length) == 0   then &quot;NO_RELATED_IDS&quot;   else empty end),
+      (if ((.metadata.languages // []) | length) == 0             then &quot;NO_LANGUAGE&quot;      else empty end),
+      (if ((.metadata.version // &quot;&quot;) | length) == 0               then &quot;NO_VERSION_LABEL&quot; else empty end),
+      (if ((.metadata.additional_descriptions // []) | map(select(.type.id == &quot;notes&quot;)) | length) == 0
+                                                                  then &quot;NO_NOTES&quot;         else empty end),
+      (if (creators | length) == 0                                then &quot;NO_CREATORS&quot;      else empty end),
+      (if (creators | any(.person_or_org.type == &quot;personal&quot; and ((.person_or_org.name // &quot;&quot;) | test(&quot;[0-9]&quot;))))
+                                                                  then &quot;CREATOR_NAME_HAS_DIGITS&quot; else empty end),
+      (if (creators | any(.person_or_org.type == &quot;organizational&quot;)) | not
+                                                                  then &quot;NO_ORG_CREATOR&quot;   else empty end),
+      (if (creators | any((.person_or_org.identifiers // []) | any(.scheme == &quot;orcid&quot;))) | not
+                                                                  then &quot;NO_ORCID&quot;         else empty end),
+      (if ($fnames | length) == 0                                 then &quot;NO_FILES&quot;         else empty end),
+      (if ($fnames | any(test(&quot; &quot;)))                              then &quot;FILENAME_SPACES&quot;  else empty end),
+      (if ($fnames | any(test(&quot;^[^_]+\\.[^.]+\\.[^.]+$&quot;)))        then &quot;FILENAME_DOTTED&quot;  else empty end),
+      (if ((.parent.communities.ids // []) | length) == 0         then &quot;NO_COMMUNITY&quot;     else empty end)
+    ];
+
+def row:
+  { id: .id,
+    doi: (.pids.doi.identifier // &quot;&quot;),
+    concept: (.parent.pids.doi.identifier // &quot;&quot;),
+    version: (.metadata.version // &quot;&quot;),
+    vindex: (.versions.index // 1),
+    is_latest: (.versions.is_latest // true),
+    published: (.metadata.publication_date // &quot;&quot;),
+    type: (.metadata.resource_type.id // &quot;&quot;),
+    title: (.metadata.title // &quot;&quot;),
+    nfiles: (files_list | length),
+    md5s: (files_list | map(.checksum // &quot;&quot; | sub(&quot;^md5:&quot;; &quot;&quot;)) | map(select(length &gt; 0))),
+    flags: flags };
+
+# cross-record: duplicate checksums
+[ .[] | row ] as $rows
+| ( [ $rows[] | .md5s[] ] | group_by(.) | map(select(length &gt; 1) | .[0]) ) as $dups
+| $rows
+| map( if (.md5s | any(. as $m | $dups | any(. == $m))) then .flags += [&quot;DUP_FILE_ACROSS_RECORDS&quot;] else . end )
+JQ
+
+jq -f &quot;$DIR/flags.jq&quot; &quot;$DIR/records.json&quot; &gt; &quot;$DIR/rows.json&quot;
+
+# ---------- 4. outputs ----------
+jq -r &#x27;[&quot;id&quot;,&quot;doi&quot;,&quot;concept_doi&quot;,&quot;version&quot;,&quot;published&quot;,&quot;type&quot;,&quot;nfiles&quot;,&quot;title&quot;,&quot;flags&quot;], (.[] | [ .id, .doi, .concept, .version, .published, .type, .nfiles, .title, (.flags | join(&quot; &quot;)) ]) | @tsv&#x27; \
+  &quot;$DIR/rows.json&quot; &gt; &quot;$DIR/audit.tsv&quot;
+
+{
+  echo &quot;# Zenodo audit — $STAMP&quot;
+  echo
+  echo &quot;Source: \`$BASE\` mode=\`$MODE\` ${ARG:+arg=\`$ARG\`} all_versions=$ALLV  &quot;
+  echo &quot;Records: $(jq length &quot;$DIR/rows.json&quot;)&quot;
+  echo
+  echo &quot;## Flag counts&quot;
+  echo
+  echo &quot;| flag | records |&quot;; echo &quot;|---|---|&quot;
+  jq -r &#x27;[ .[].flags[] ] | group_by(.) | map({f: .[0], n: length}) | sort_by(-.n)[] | &quot;| \(.f) | \(.n) |&quot;&#x27; &quot;$DIR/rows.json&quot;
+  echo
+  echo &quot;## Records&quot;
+  echo
+  echo &quot;| id | DOI | v | type | files | title | flags |&quot;; echo &quot;|---|---|---|---|---|---|---|&quot;
+  jq -r &#x27;.[] | &quot;| \(.id) | \(.doi) | \(.version) | \(.type) | \(.nfiles) | \(.title | gsub(&quot;\\|&quot;; &quot;\\\\|&quot;)) | \(.flags | join(&quot;, &quot;)) |&quot;&#x27; &quot;$DIR/rows.json&quot;
+  echo
+  echo &quot;## Flag key&quot;
+  echo
+  cat &lt;&lt;&#x27;KEY&#x27;
+- DESC_IS_FILENAME / TITLE_IS_FILENAME — abstract or title is just a filename
+- DESC_SHORT — description under 120 chars
+- MULTI_LICENSE — more than one rights entry (no AND/OR semantics on Zenodo)
+- MIT_ON_MEDIA — software license on a video/image/audio record
+- NO_RELATED_IDS — no edges in the DOI graph (isPartOf, isDerivedFrom, ...)
+- CREATOR_NAME_HAS_DIGITS — a &quot;personal&quot; creator whose name contains digits (e.g. &quot;Provo 42&quot; parsed as a given name)
+- NO_ORG_CREATOR — no organizational creator/affiliation entry
+- FILENAME_DOTTED — dotted filename style (Foo.Bar.0001.ext) vs underscore style; check convention
+- DUP_FILE_ACROSS_RECORDS — same md5 appears in more than one record
+- NO_NOTES / NO_VERSION_LABEL — no version notes / version string
+KEY
+} &gt; &quot;$DIR/audit.md&quot;
+
+{
+  echo &quot;endpoint=$BASE mode=$MODE arg=${ARG:-} all_versions=$ALLV&quot;
+  echo &quot;records=$(jq length &quot;$DIR/rows.json&quot;)&quot;
+  echo &quot;records_json_sha256=$(sha256sum &quot;$DIR/records.json&quot; | cut -d&#x27; &#x27; -f1)&quot;
+  echo &quot;rows_json_sha256=$(sha256sum &quot;$DIR/rows.json&quot; | cut -d&#x27; &#x27; -f1)&quot;
+  echo &quot;generated_utc=$STAMP&quot;
+  echo &quot;script_sha256=$(sha256sum &quot;$0&quot; | cut -d&#x27; &#x27; -f1)&quot;
+} &gt; &quot;$DIR/receipt.txt&quot;
+
+echo &quot;» done → $DIR&quot; &gt;&amp;2
+echo &gt;&amp;2
+jq -r &#x27;[ .[].flags[] ] | group_by(.) | map(&quot;\(length)\t\(.[0])&quot;) | sort_by(-(split(&quot;\t&quot;)[0]|tonumber))[]&#x27; &quot;$DIR/rows.json&quot; &gt;&amp;2
+</pre><h2>Comment by attogram</h2><pre>Claude
+
+Network is off in my sandbox, so I&#x27;ll test the flag logic against a fixture shaped like the actual InvenioRDM response for 22309923.
+
+No jq in this sandbox and no network, so I can&#x27;t execute it here — I&#x27;ll do a careful static review instead and fix what I spot.
+
+Read-only, never writes to Zenodo. Three ways to select records:
+
+```
+ZENODO_TOKEN=… ./zenodo-audit.sh              # everything you own
+./zenodo-audit.sh --community rock-street     # no token needed
+./zenodo-audit.sh --ids 22308897,22309923     # smoke test — start here
+```
+
+Add `--all-versions` to include superseded versions, `--sandbox` for the sandbox instance. Each run writes a timestamped folder with `records.json` (full API responses), `audit.tsv`, `audit.md` (flag counts + per-record table), and `receipt.txt` (sha256 of the snapshot + script — commit that).
+
+Twenty-one flags, including everything from the review: `DESC_IS_FILENAME`, `MULTI_LICENSE`, `MIT_ON_MEDIA`, `NO_RELATED_IDS`, `CREATOR_NAME_HAS_DIGITS`, `NO_ORG_CREATOR`, `FILENAME_DOTTED`, and `DUP_FILE_ACROSS_RECORDS` (same md5 in more than one record — the duplicate-files concern from the DHA batches).
+
+Caveat: my sandbox has no jq and no network, so this is syntax-checked and desk-reviewed but not executed against the live API. Run the `--ids` smoke test first; if the RDM response shape differs from what I assumed anywhere (most likely `files.entries` or `rights[].title`), paste the error and I&#x27;ll patch it. Drafts you haven&#x27;t published will show as `! failed &lt;id&gt;` since `/api/records/&lt;id&gt;` only serves published records — expected, not a bug.</pre></body></html>

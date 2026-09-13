@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>feat: add mobile repository history archive workflow</title><style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;line-height:1.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}li{margin:.4rem 0}a{overflow-wrap:anywhere} .failed{color:#a00}</style><body><h1>feat: add mobile repository history archive workflow</h1><p><a href="../index.html">Archive index</a></p><h2>Description</h2><pre>Implements #60.
+
+### What this adds
+
+- A manually triggered **Save repository history** GitHub Actions workflow that can be launched from GitHub mobile/web.
+- Dependency-free Python export of open/closed issues, pull requests, conversation comments, reviews, inline review comments, releases, tags, release assets, source archives, and GitHub-hosted attachments.
+- A dedicated `repository-archive` branch for generated output, so the default branch is not filled with archive data.
+- Streaming asset downloads with SHA-256 checksums and 40 MiB Git-friendly chunks for large files.
+- A restore helper that reassembles chunked assets and verifies size + SHA-256.
+- Explicit incomplete-state handling: API/download failures are recorded in `manifest.json`, the partial archive is still preserved, and the workflow fails visibly instead of reporting a false success.
+- Credential-safe downloads: the token is sent only to `api.github.com` and removed on cross-host redirects.
+
+### Validation
+
+```text
+python -m unittest discover -s tests -v   # 14 tests
+python -m py_compile tools/repo_dump.py tools/repo_restore.py
+git diff --check
+```
+
+No generated repository dump is included in this PR. After merge, running the workflow creates/updates the `repository-archive` branch and can be used directly against this repository for the acceptance demonstration.
+</pre></body></html>

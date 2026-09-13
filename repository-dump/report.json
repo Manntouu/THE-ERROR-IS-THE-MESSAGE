@@ -1,0 +1,25 @@
+{
+  "repository": "attogram/THE-ERROR-IS-THE-MESSAGE",
+  "started_at": "2026-09-13T09:43:44Z",
+  "finished_at": "2026-09-13T09:50:27Z",
+  "scope": "issues, pull requests, releases, tags, root README",
+  "complete": true,
+  "selected_scope_complete": true,
+  "counts": {
+    "issues": 60,
+    "pull_requests": 6,
+    "conversation_comments": 168,
+    "review_comments": 0,
+    "reviews": 0,
+    "releases": 4,
+    "tags": 4,
+    "assets": 399,
+    "failed_assets": 0
+  },
+  "downloaded_bytes": 1880901820,
+  "limitations": [
+    "Snapshot is not atomic; edits made during the run can appear at different times.",
+    "GitHub does not expose deleted/private-inaccessible content or complete edit histories.",
+    "Separate GitHub Discussions, projects, wikis, Actions artifacts and Git history are outside this export."
+  ]
+}
